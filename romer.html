@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rømerovo měření rychlosti světla</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+        }
+        h1 { margin-bottom: 5px; color: #38bdf8; font-size: 24px; text-align: center; }
+        p { margin-top: 0; color: #94a3b8; text-align: center; max-width: 600px; font-size: 14px; }
+        .container {
+            display: flex;
+            flex-direction: column;
+            background-color: #1e293b;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 800px;
+            box-sizing: border-box;
+        }
+        canvas {
+            background-color: #020617;
+            border-radius: 8px;
+            width: 100%;
+            height: auto;
+        }
+        .controls {
+            margin-top: 15px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            background: #0f172a;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        label { font-size: 12px; font-weight: bold; color: #38bdf8; text-transform: uppercase; }
+        input[type="range"] {
+            width: 100%;
+            accent-color: #38bdf8;
+        }
+        .stats {
+            grid-column: span 2;
+            display: flex;
+            justify-content: space-around;
+            background: #1e293b;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            border: 1px solid #334155;
+        }
+        .stat-val { font-weight: bold; color: #f59e0b; }
+    </style>
+</head>
+<body>
+
+    <h1>Rømerův experiment: Rychlost světla</h1>
+    <p>Změnou pozice Země uvidíš, jak daleko musí světlo letět z měsíce Io, když se vynoří ze stínu Jupiteru.</p>
+
+    <div class="container">
+        <canvas id="simCanvas" width="800" height="400"></canvas>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="earthAngle">Pozice Země na oběžné dráze</label>
+                <input type="range" id="earthAngle" min="0" max="180" value="0">
+                <div style="display:flex; justify-content:space-between; font-size:11px; color:#64748b; margin-top:2px;">
+                    <span>Blízko Jupiteru (Léto)</span>
+                    <span>Daleko od Jupitera (Zima)</span>
+                </div>
+            </div>
+            
+            <div class="control-group" style="justify-content: center; align-items: center;">
+                <button id="pulseBtn" style="background:#38bdf8; color:#0f172a; border:none; padding:10px 20px; font-weight:bold; border-radius:6px; cursor:pointer; width: 100%;">
+                    Vyslat signál z měsíce Io
+                </button>
+            </div>
+
+            <div class="stats">
+                <div>Poloha: <span id="posLabel" class="stat-val">Nejblíže</span></div>
+                <div>Extra vzdálenost pro světlo: <span id="distLabel" class="stat-val">0 km</span></div>
+                <div>Zpoždění příletu světla: <span id="delayLabel" class="stat-val">0 min 0 s</span></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Ovládací prvky
+        const earthSlider = document.getElementById('earthAngle');
+        const pulseBtn = document.getElementById('pulseBtn');
+        const posLabel = document.getElementById('posLabel');
+        const distLabel = document.getElementById('distLabel');
+        const delayLabel = document.getElementById('delayLabel');
+
+        // Model vesmíru (souřadnice a měřítka upravená pro plátno)
+        const sun = { x: 180, y: 200 };
+        const earthOrbitRadius = 100;
+        const jupiterX = 700;
+        const jupiterY = 200;
+        const jupiterRadius = 22;
+        const ioOrbitRadius = 45;
+        
+        let ioAngle = 0;
+        let lightPulses = [];
+        const lightSpeed = 7; // Rychlost animace světla na plátně
+
+        // Výpočty pro reálné zobrazení hodnot
+        // Průměr zemské dráhy je cca 300 milionů km, světlo ho letí cca 1000 sekund (16.6 min)
+        const maxRealDistance = 299200000; // km (2 AU)
+        const maxRealDelay = 997; // sekund (cca 16.6 minut pro plný průměr)
+
+        function getEarthPos(angleDeg) {
+            // Přepočet posuvníku (0 až 180 stupňů)
+            // 0 = nejblíže k Jupiteru (vpravo od Slunce)
+            // 180 = nejvzdálenější (vlevo od Slunce)
+            const rad = (angleDeg * Math.PI) / 180;
+            return {
+                x: sun.x + Math.cos(rad) * earthOrbitRadius,
+                y: sun.y + Math.sin(rad) * earthOrbitRadius
+            };
+        }
+
+        pulseBtn.addEventListener('click', () => {
+            // Vystřelí pulz pouze pokud je Io zrovna na pravé straně (vynořuje se ze stínu)
+            // Pro jednoduchost umožníme vystřelit pulz hned, jakmile vyjde ze stínu
+            const ioX = jupiterX + Math.cos(ioAngle) * ioOrbitRadius;
+            const ioY = jupiterY + Math.sin(ioAngle) * ioOrbitRadius;
+            
+            // Chceme simulovat světlo letící k Zemi
+            lightPulses.push({
+                x: ioX,
+                y: ioY,
+                progress: 0
+            });
+        });
+
+        function updateAndDraw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const sliderVal = parseFloat(earthSlider.value);
+            const earth = getEarthPos(sliderVal);
+
+            // Aktualizace měsíce Io (obíhá kolem Jupitera)
+            ioAngle += 0.04;
+            const ioX = jupiterX + Math.cos(ioAngle) * ioOrbitRadius;
+            const ioY = jupiterY + Math.sin(ioAngle) * ioOrbitRadius;
+
+            // Výpočet reálných statistik na základě úhlu
+            // Poměr přidané dráhy (0 při nejbližším bodu, 1 při nejvzdálenějším)
+            const ratio = (1 - Math.cos((sliderVal * Math.PI) / 180)) / 2;
+            const currentExtraDist = ratio * maxRealDistance;
+            const currentDelaySec = ratio * maxRealDelay;
+            
+            // Aktualizace textů
+            if(sliderVal < 30) posLabel.innerText = "Velmi blízko";
+            else if(sliderVal > 150) posLabel.innerText = "Velmi daleko";
+            else posLabel.innerText = "Mezipoloha";
+
+            distLabel.innerText = Math.round(currentExtraDist).toLocaleString('cs-CZ') + " km";
+            
+            const m = Math.floor(currentDelaySec / 60);
+            const s = Math.round(currentDelaySec % 60);
+            delayLabel.innerText = `${m} min ${s} s`;
+
+            // 1. STÍN JUPITERA (vlevo od Jupitera, protože Slunce je vlevo)
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+            ctx.beginPath();
+            ctx.moveTo(jupiterX, jupiterY - jupiterRadius);
+            ctx.lineTo(canvas.width, jupiterY - jupiterRadius - 10);
+            ctx.lineTo(canvas.width, jupiterY + jupiterRadius + 10);
+            ctx.lineTo(jupiterX, jupiterY + jupiterRadius);
+            ctx.closePath();
+            ctx.fill();
+
+            // Naznačení kuželu stínu jemnými čarami
+            ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // 2. DRÁHY
+            // Dráha Země
+            ctx.beginPath();
+            ctx.arc(sun.x, sun.y, earthOrbitRadius, 0, 2 * Math.PI);
+            ctx.strokeStyle = '#334155';
+            ctx.setLineDash([4, 4]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Dráha Io
+            ctx.beginPath();
+            ctx.arc(jupiterX, jupiterY, ioOrbitRadius, 0, 2 * Math.PI);
+            ctx.strokeStyle = '#334155';
+            ctx.stroke();
+
+            // 3. SLUNCE
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#eab308';
+            ctx.fillStyle = '#eab308';
+            ctx.beginPath();
+            ctx.arc(sun.x, sun.y, 30, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.shadowBlur = 0; // reset stínů
+
+            // 4. JUPITER
+            ctx.fillStyle = '#cd9b7b';
+            ctx.beginPath();
+            ctx.arc(jupiterX, jupiterY, jupiterRadius, 0, 2 * Math.PI);
+            ctx.fill();
+            // Pruhy na Jupiteru
+            ctx.fillStyle = '#a77b5c';
+            ctx.fillRect(jupiterX - jupiterRadius + 2, jupiterY - 6, jupiterRadius * 2 - 4, 4);
+            ctx.fillRect(jupiterX - jupiterRadius + 1, jupiterY + 4, jupiterRadius * 2 - 2, 3);
+
+            // 5. MĚSÍC IO
+            // Pokud je schovaný ve stínu (napravo od Jupitera v kuželu), ztmavíme ho
+            const isEclipsed = (ioX > jupiterX && Math.abs(ioY - jupiterY) < jupiterRadius);
+            ctx.fillStyle = isEclipsed ? '#475569' : '#fef08a';
+            ctx.beginPath();
+            ctx.arc(ioX, ioY, 5, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // Popisek k Io, když se vynoří (Rømerův klíčový moment)
+            if (Math.abs(ioY - (jupiterY - jupiterRadius)) < 8 && ioX > jupiterX) {
+                ctx.fillStyle = '#38bdf8';
+                ctx.font = '10px sans-serif';
+                ctx.fillText("Vynoření ze stínu!", jupiterX - 30, jupiterY - ioOrbitRadius - 10);
+            }
+
+            // 6. SVĚTELNÉ PULZY (Animace paprsku)
+            for (let i = lightPulses.length - 1; i >= 0; i--) {
+                let p = lightPulses[i];
+                
+                // Vektor od startu k Zemi
+                const dx = earth.x - p.x;
+                const dy = earth.y - p.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist < lightSpeed) {
+                    // Světlo dorazilo k Zemi, odstraníme pulz
+                    lightPulses.splice(i, 1);
+                    
+                    // Záblesk na Zemi
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(earth.x, earth.y, 12, 0, 2 * Math.PI);
+                    ctx.fill();
+                    continue;
+                }
+
+                // Posun pulzu směrem k Zemi
+                p.x += (dx / dist) * lightSpeed;
+                p.y += (dy / dist) * lightSpeed;
+
+                // Vykreslení pulzu
+                ctx.fillStyle = '#f59e0b';
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#f59e0b';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 4, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                // Čára ukazující dráhu paprsku
+                ctx.strokeStyle = 'rgba(245, 158, 11, 0.2)';
+                ctx.beginPath();
+                ctx.moveTo(earth.x, earth.y);
+                ctx.lineTo(p.x, p.y);
+                ctx.stroke();
+            }
+
+            // 7. ZEMĚ
+            ctx.fillStyle = '#3b82f6';
+            ctx.beginPath();
+            ctx.arc(earth.x, earth.y, 8, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Popisky planet
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '12px sans-serif';
+            ctx.fillText("Slunce", sun.x - 18, sun.y + 45);
+            ctx.fillText("Jupiter", jupiterX - 20, jupiterY + 40);
+            ctx.fillText("Země", earth.x - 15, earth.y - 14);
+
+            requestAnimationFrame(updateAndDraw);
+        }
+
+        // Automatické vysílání pulzů pro plynulost simulace každé 3 sekundy
+        setInterval(() => {
+            // Vystřelí pulz z aktuální pozice Io
+            lightPulses.push({ x: jupiterX + Math.cos(ioAngle)*ioOrbitRadius, y: jupiterY + Math.sin(ioAngle)*ioOrbitRadius });
+        }, 2500);
+
+        updateAndDraw();
+    </script>
+</body>
+</html>

@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>15 000 Generací Homo Sapiens s Vzhledem</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --panel-bg: #2d2d2d;
+            --text-color: #ffffff;
+            --accent-color: #3550D4;
+            --paleo-color: #8b5a2b;
+            --agri-color: #4a7c59;
+            --modern-color: #3a86c8;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 850px;
+            background-color: var(--panel-bg);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        h1 {
+            text-align: center;
+            margin-top: 0;
+            font-size: 24px;
+            color: #fff;
+        }
+
+        /* Rozvržení s avatarem */
+        .showcase-grid {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            gap: 20px;
+            background: #222;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            min-height: 160px;
+            align-items: center;
+            border-left: 8px solid var(--paleo-color);
+            transition: border-color 0.5s ease;
+        }
+
+        .avatar-box {
+            font-size: 64px;
+            text-align: center;
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
+
+        .info-box {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .era-title {
+            font-size: 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+            color: #fff;
+        }
+
+        .milestone-text {
+            font-size: 14px;
+            color: #ccc;
+            margin-bottom: 10px;
+            font-style: italic;
+        }
+
+        .look-text {
+            font-size: 14px;
+            color: #ffb86c;
+            line-height: 1.4;
+        }
+
+        .look-text strong {
+            color: #fff;
+        }
+
+        /* Počítadla */
+        .counters {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 25px 0;
+        }
+
+        .counter-box {
+            background-color: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .counter-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #aaa;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .counter-value {
+            font-size: 32px;
+            font-weight: bold;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Osa a ovládání */
+        .timeline-container {
+            margin: 25px 0;
+        }
+
+        .scrubber {
+            width: 100%;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 8px;
+            border-radius: 4px;
+            background: #444;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .scrubber::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--accent-color);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn-play {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            min-width: 120px;
+        }
+
+        .btn-play:hover { background-color: #263ca3; }
+
+        select {
+            background-color: #444;
+            color: white;
+            border: 1px solid #555;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .ratio-bar {
+            display: flex;
+            height: 12px;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-top: 10px;
+            background-color: #444;
+        }
+        .ratio-paleo { width: 96%; background-color: var(--paleo-color); }
+        .ratio-agri { width: 3.9%; background-color: var(--agri-color); }
+        .ratio-modern { width: 0.1%; background-color: var(--modern-color); }
+
+        .ratio-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #888;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Vzhled a vývoj lidstva: 15 000 generací</h1>
+
+    <!-- Hlavní vizuální grid s avatarem -->
+    <div id="showcaseGrid" class="showcase-grid">
+        <div id="avatarBox" class="avatar-box">🦴</div>
+        <div class="info-box">
+            <div id="eraTitle" class="era-title">-</div>
+            <div id="milestoneText" class="milestone-text">-</div>
+            <div id="lookText" class="look-text">-</div>
+        </div>
+    </div>
+
+    <!-- Hlavní číselníky -->
+    <div class="counters">
+        <div class="counter-box">
+            <div class="counter-label">Aktuální generace</div>
+            <div id="genCounter" class="counter-value">0</div>
+        </div>
+        <div class="counter-box">
+            <div class="counter-label">Let před současností</div>
+            <div id="yearsCounter" class="counter-value">300 000</div>
+        </div>
+    </div>
+
+    <!-- Časová osa -->
+    <div class="timeline-container">
+        <input type="range" id="scrubber" class="scrubber" min="0" max="15000" value="0">
+        <div class="ratio-bar">
+            <div class="ratio-paleo"></div>
+            <div class="ratio-agri"></div>
+            <div class="ratio-modern"></div>
+        </div>
+        <div class="ratio-labels">
+            <span>← Před 300 000 lety</span>
+            <span>Před 12 000 lety</span>
+            <span>Dnes →</span>
+        </div>
+    </div>
+
+    <!-- Ovládání -->
+    <div class="controls">
+        <button id="playBtn" class="btn-play">Spustit</button>
+        <div>
+            <label for="speedSelect">Rychlost:</label>
+            <select id="speedSelect">
+                <option value="1">1 gen / s</option>
+                <option value="10" selected>10 gen / s</option>
+                <option value="50">50 gen / s</option>
+                <option value="200">200 gen / s</option>
+                <option value="1000">1000 gen / s</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<script>
+    const milestones = [
+        { 
+            gen: 0, 
+            title: "První Homo sapiens", 
+            text: "Počátek našeho druhu v Africe.", 
+            look: "<strong>Vzhled:</strong> Tvář je v podstatě moderní, ale postava je extrémně robustní a svalnatá, uzpůsobená lovu na dálku. Kůže je tmavá (ochrana před africkým sluncem). Žádné oblečení, nanejvýš jednoduchá kůže kolem pasu. Vlasy divoké.",
+            avatar: "🌋",
+            color: "#8b5a2b"
+        },
+        { 
+            gen: 5000, 
+            title: "Rozvoj v Africe", 
+            text: "Lidé zdokonalují lov a používání ohně.", 
+            look: "<strong>Vzhled:</strong> Stále stoprocentně tmavá kůže. Na těle se objevují první záměrné jizvy (skarifikace) nebo zdobení těla hlinkou a popelem. Používají se první jednoduché náhrdelníky z provrtaných skořápek.",
+            avatar: "🔥",
+            color: "#8b5a2b"
+        },
+        { 
+            gen: 11500, 
+            title: "Cesta z Afriky (Exodus)", 
+            text: "Lidé osídlují chladnější oblasti Asie a Evropy.", 
+            look: "<strong>Vzhled:</strong> S přechodem do chladnějších oblastí severu se lidé začínají poprvé pořádně oblékat. Šijí si primitivní oděvy z kožešin zvířat. Geneticky se začíná mírně světlat kůže, aby tělo v méně slunečných oblastech dokázalo tvořit vitamin D.",
+            avatar: "❄️",
+            color: "#8b5a2b"
+        },
+        { 
+            gen: 13000, 
+            title: "Potkávání s Neandrtálci", 
+            text: "V Evropě žijeme vedle jiného lidského druhu.", 
+            look: "<strong>Vzhled:</strong> Homo sapiens v Evropě je vysoký, štíhlejší než podsaditý Neandrtálec, se kterým se občas kříží. Lidé si barví obličeje červeným okrem, nosí náhrdelníky z dravých zubů. Používají kostěné jehly na sešívání kůží.",
+            avatar: "🎨",
+            color: "#8b5a2b"
+        },
+        { 
+            gen: 14400, 
+            title: "První zemědělci", 
+            text: "Konec kočování, vznikají první trvalé vesnice.", 
+            look: "<strong>Vzhled:</strong> Změna stravy (mnoho obilovin, méně masa) poprvé v historii způsobuje lidem zubní kazy a mírné snížení průměrné výšky. Oblečení už není jen ze zvířat, objevují se první tkané látky ze lnu a vlny. Nosí se plnovousy a sepnuté vlasy.",
+            avatar: "🌾",
+            color: "#4a7c59"
+        },
+        { 
+            gen: 14750, 
+            title: "Věk bronzu a měst", 
+            text: "Staví se pyramidy, vzniká písmo.", 
+            look: "<strong>Vzhled:</strong> Lidé se začínají dramaticky lišit podle společenského statusu. Bohatí nosí šperky ze zlata a bronzu, barvené látky, líčí si oči (Egypt) a mají upravené účesy nebo paruky. Objevuje se první holení bronzovými břitvami.",
+            avatar: "👑",
+            color: "#4a7c59"
+        },
+        { 
+            gen: 14875, 
+            title: "Antika a středověk", 
+            text: "Éra Říma, rytířů a starých říší.", 
+            look: "<strong>Vzhled:</strong> V Evropě a Asii převládají propracované vlněné a lněné tuniky, tógy či kalhoty. Vojáci nosí kovové zbroje a přilby. Struktura obličeje a výška je totožná s námi.",
+            avatar: "⚔️",
+            color: "#4a7c59"
+        },
+        { 
+            gen: 14990, 
+            title: "Průmyslový věk", 
+            text: "Továrny, pára a přerod světa.", 
+            look: "<strong>Vzhled:</strong> Masová móda. Lidé nosí klobouky, obleky, šaty s korzety. Kvůli smogu a práci v továrnách jsou dělnické vrstvy často bledé a unavené. První hromadná výroba brýlí a doplňků.",
+            avatar: "🎩",
+            color: "#3a86c8"
+        },
+        { 
+            gen: 15000, 
+            title: "Dnešní člověk", 
+            text: "Digitální věk a globální svět.", 
+            look: "<strong>Vzhled:</strong> Trička, džíny, tenisky. V rukou držíme smartphony. Díky moderní medicíně a dostatku jídla jsme v průměru nejvyšší v historii, máme rovnější zuby (rovnátka) a dožíváme se nejvyššího věku.",
+            avatar: "📱",
+            color: "#3a86c8"
+        }
+    ];
+
+    let currentGen = 0;
+    let isPlaying = false;
+    let intervalId = null;
+
+    const genCounter = document.getElementById('genCounter');
+    const yearsCounter = document.getElementById('yearsCounter');
+    const scrubber = document.getElementById('scrubber');
+    const playBtn = document.getElementById('playBtn');
+    const speedSelect = document.getElementById('speedSelect');
+    const showcaseGrid = document.getElementById('showcaseGrid');
+    const avatarBox = document.getElementById('avatarBox');
+    const eraTitle = document.getElementById('eraTitle');
+    const milestoneText = document.getElementById('milestoneText');
+    const lookText = document.getElementById('lookText');
+
+    function updateMilestone(gen) {
+        let active = milestones[0];
+        for (let i = 0; i < milestones.length; i++) {
+            if (gen >= milestones[i].gen) {
+                active = milestones[i];
+            } else {
+                break;
+            }
+        }
+        
+        eraTitle.innerText = active.title;
+        milestoneText.innerText = active.text;
+        lookText.innerHTML = active.look;
+        avatarBox.innerText = active.avatar;
+        showcaseGrid.style.borderColor = active.color;
+    }
+
+    function formatNumber(num) {
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+    }
+
+    function render() {
+        genCounter.innerText = formatNumber(currentGen);
+        let yearsAgo = (15000 - currentGen) * 20;
+        yearsCounter.innerText = formatNumber(yearsAgo);
+        scrubber.value = currentGen;
+        updateMilestone(currentGen);
+    }
+
+    function tick() {
+        let speed = parseInt(speedSelect.value);
+        currentGen += speed;
+        
+        if (currentGen >= 15000) {
+            currentGen = 15000;
+            pauseSimulation();
+        }
+        render();
+    }
+
+    function playSimulation() {
+        isPlaying = true;
+        playBtn.innerText = "Pauza";
+        intervalId = setInterval(tick, 50); 
+    }
+
+    function pauseSimulation() {
+        isPlaying = false;
+        playBtn.innerText = "Spustit";
+        clearInterval(intervalId);
+    }
+
+    playBtn.addEventListener('click', () => {
+        if (currentGen >= 15000) currentGen = 0;
+        if (isPlaying) pauseSimulation(); else playSimulation();
+    });
+
+    scrubber.addEventListener('input', (e) => {
+        currentGen = parseInt(e.target.value);
+        render();
+    });
+
+    speedSelect.addEventListener('change', () => {
+        if (isPlaying) {
+            clearInterval(intervalId);
+            intervalId = setInterval(tick, 50);
+        }
+    });
+
+    render();
+</script>
+
+</body>
+</html>

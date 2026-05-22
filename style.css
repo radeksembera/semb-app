@@ -114,6 +114,15 @@ body {
   font-weight: 400;
 }
 
+/* ===== TAGLINE SUB ===== */
+.tagline-sub {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-style: italic;
+  opacity: 0.65;
+  margin-top: -0.5rem;
+}
+
 /* ===== CONTACT ===== */
 .contact {
   display: flex;
