@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Poker Blockers</title>
+<style>
+  :root {
+    --felt-dark: #0b3d2e;
+    --felt-light: #14543f;
+    --panel-bg: #ffffff;
+    --ink: #1f2937;
+    --muted: #6b7280;
+    --accent: #4338ca;
+    --slot-empty: #e5e7eb;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: radial-gradient(ellipse at top, var(--felt-light), var(--felt-dark));
+    min-height: 100vh;
+    color: var(--ink);
+    padding: 24px 16px 60px;
+  }
+
+  .app {
+    max-width: 880px;
+    margin: 0 auto;
+    background: var(--panel-bg);
+    border-radius: 16px;
+    padding: 24px 28px 32px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+  }
+
+  h1 {
+    margin: 0 0 4px;
+    font-size: 24px;
+  }
+
+  .subtitle {
+    margin: 0 0 20px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .toggle {
+    display: inline-flex;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .toggle button {
+    border: none;
+    background: #f9fafb;
+    padding: 8px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--muted);
+  }
+
+  .toggle button.active {
+    background: var(--accent);
+    color: white;
+    font-weight: 600;
+  }
+
+  .stats {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .stats strong {
+    color: var(--ink);
+  }
+
+  .matrix-wrap {
+    overflow-x: auto;
+    margin-bottom: 28px;
+  }
+
+  .matrix {
+    display: grid;
+    grid-template-columns: 34px repeat(13, minmax(44px, 1fr));
+    gap: 2px;
+    min-width: 620px;
+  }
+
+  .hcell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    height: 28px;
+  }
+
+  .cell {
+    aspect-ratio: 1 / 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    font-size: 10.5px;
+    line-height: 1.2;
+    transition: background-color 0.15s ease;
+    user-select: none;
+  }
+
+  .cell .label {
+    font-weight: 700;
+    font-size: 10.5px;
+  }
+
+  .cell .value {
+    font-size: 9.5px;
+    opacity: 0.9;
+  }
+
+  .cell.zero {
+    background: #eef0f2 !important;
+    color: #b8bec7 !important;
+  }
+
+  .cell.excluded {
+    background: #d5dae1 !important;
+    color: #9aa3af !important;
+    opacity: 0.55;
+    filter: grayscale(70%);
+  }
+
+  .range-control {
+    margin-bottom: 28px;
+    padding: 16px 18px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+  }
+
+  .range-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+
+  .range-header .range-percent {
+    font-size: 20px;
+    color: var(--accent);
+  }
+
+  input[type="range"].range-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 999px;
+    background: #e5e7eb;
+    outline: none;
+    margin: 6px 0 12px;
+  }
+
+  input[type="range"].range-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid var(--accent);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    cursor: pointer;
+  }
+
+  input[type="range"].range-slider::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid var(--accent);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    cursor: pointer;
+  }
+
+  .range-stats {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .range-stats strong {
+    color: var(--ink);
+  }
+
+  .cards-section {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+
+  .card-group h2 {
+    font-size: 14px;
+    margin: 0 0 10px;
+    color: var(--ink);
+  }
+
+  .slots {
+    display: flex;
+    gap: 8px;
+  }
+
+  .card-slot {
+    position: relative;
+    width: 52px;
+    height: 72px;
+    border-radius: 8px;
+    background: var(--slot-empty);
+    border: 2px dashed #c5cad2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  .card-slot.filled {
+    background: #ffffff;
+    border: 2px solid #d1d5db;
+    flex-direction: column;
+  }
+
+  .card-slot .placeholder {
+    color: #9aa1ab;
+    font-size: 22px;
+    font-weight: 400;
+  }
+
+  .card-slot .rank {
+    font-size: 22px;
+  }
+
+  .card-slot .suit {
+    font-size: 18px;
+    margin-top: -4px;
+  }
+
+  .card-slot .clear-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #374151;
+    color: white;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 16px;
+  }
+
+  .modal-overlay.open {
+    display: flex;
+  }
+
+  .modal {
+    background: white;
+    border-radius: 12px;
+    padding: 18px;
+    width: 100%;
+    max-width: 480px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    font-weight: 700;
+  }
+
+  .modal-header button {
+    border: none;
+    background: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--muted);
+  }
+
+  .picker-grid {
+    display: grid;
+    grid-template-columns: repeat(13, 1fr);
+    gap: 4px;
+  }
+
+  .picker-card {
+    aspect-ratio: 3 / 4;
+    border: 1px solid #d1d5db;
+    border-radius: 5px;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .picker-card:hover:not(.disabled) {
+    background: #f3f4f6;
+  }
+
+  .picker-card.selected {
+    outline: 2px solid var(--accent);
+    background: #eef2ff;
+  }
+
+  .picker-card.disabled {
+    background: #f3f4f6;
+    color: #d1d5db !important;
+    cursor: not-allowed;
+  }
+
+  .modal-clear {
+    margin-top: 14px;
+    width: 100%;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    background: #f9fafb;
+    cursor: pointer;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Poker Blockers</h1>
+  <p class="subtitle">Odhad rozsahu soupeřových karet v headsupu (Texas Hold'em) na základě odkrytých karet</p>
+
+  <div class="controls">
+    <div class="toggle">
+      <button id="modePercent" class="active">%</button>
+      <button id="modeCount">počet</button>
+    </div>
+    <div class="stats" id="stats"></div>
+  </div>
+
+  <div class="matrix-wrap">
+    <div class="matrix" id="matrix"></div>
+  </div>
+
+  <div class="range-control">
+    <div class="range-header">
+      <span class="range-percent" id="rangePercentLabel">100%</span>
+      <span id="rangeCountLabel">169 hands</span>
+    </div>
+    <input type="range" class="range-slider" id="rangeSlider" min="1" max="169" value="169" />
+    <div class="range-stats" id="rangeStats"></div>
+  </div>
+
+  <div class="cards-section">
+    <div class="card-group">
+      <h2>Moje karty</h2>
+      <div class="slots" id="heroSlots"></div>
+    </div>
+    <div class="card-group">
+      <h2>Karty na stole</h2>
+      <div class="slots" id="boardSlots"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <span id="modalTitle">Vyber kartu</span>
+      <button id="modalClose">×</button>
+    </div>
+    <div class="picker-grid" id="pickerGrid"></div>
+    <button class="modal-clear" id="modalClear">Vymazat kartu</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  const RANKS = ['A','K','Q','J','T','9','8','7','6','5','4','3','2'];
+  const SUITS = ['s','h','d','c'];
+  const SUIT_SYMBOL = { s: '♠', h: '♥', d: '♦', c: '♣' };
+  const SUIT_COLOR = { s: '#1f2937', h: '#dc2626', d: '#2563eb', c: '#16a34a' };
+
+  // 169 starting hands ranked from strongest (index 0) to weakest (index 168),
+  // matching the standard heads-up all-in-equity ranking used by common range sliders.
+  const HAND_ORDER = [
+    'AA','KK','QQ','AKs','JJ','TT','AQs','AJs','KQs','AKo','KJs',
+    'AQo','ATs','KTs','QJs','99','QTs','KQo','AJo','JTs',
+    'A8s','A9s','K9s','88','KJo','A7s','ATo','QJo','A5s','Q9s','T9s',
+    'A4s','A6s','J9s','KTo','A3s','JTo','QTo',
+    '77','A2s','K7s','K8s','Q8s','98s','A9o','K5s','T8s',
+    'J8s','K4s','K6s','K9o','Q7s','66','A8o','T9o',
+    '87s','97s','A5o','J7s','J9o','Q9o','T7s','A7o','Q5s','Q6s',
+    '76s','86s','A4o','A6o','K2s','K3s','Q4s','96s','Q3s',
+    '55','A3o','K8o','J5s','Q2s','T6s',
+    '65s','75s','J6s','J8o','K7o','Q8o','T8o',
+    '44','98o','A2o','J4s','K6o','54s','64s','85s','J3s','T5s',
+    '95s','J2s','K5o','T4s','33','87o','Q7o','T3s','T7o',
+    '74s','97o','K4o','53s','84s','94s','J7o','K3o','Q6o','T2s',
+    '22','63s','93s','43s','76o','K2o','Q5o',
+    '52s','73s','86o','92s','J6o','T6o',
+    '42s','62s','65o','83s','96o','Q4o',
+    '32s','54o','72s','75o','82s','J5o','Q3o',
+    '85o','95o','J4o','Q2o','T5o','53o','64o','J2o','J3o','T4o',
+    '43o','74o','84o','T2o','T3o','52o','63o','73o','93o','94o',
+    '42o','62o','82o','83o','92o','32o','72o',
+  ];
+
+  const slotDefs = [
+    { key: 'hero0', group: 'hero' },
+    { key: 'hero1', group: 'hero' },
+    { key: 'board0', group: 'board' },
+    { key: 'board1', group: 'board' },
+    { key: 'board2', group: 'board' },
+    { key: 'board3', group: 'board' },
+    { key: 'board4', group: 'board' },
+  ];
+
+  const state = {};
+  slotDefs.forEach(s => { state[s.key] = null; });
+
+  let mode = 'percent';
+  let activeSlot = null;
+
+  // Precompute all 169 hand-type cells and their concrete card combos.
+  const cells = [];
+  for (let i = 0; i < 13; i++) {
+    cells.push([]);
+    for (let j = 0; j < 13; j++) {
+      const combos = [];
+      if (i === j) {
+        const rank = RANKS[i];
+        for (let a = 0; a < SUITS.length; a++) {
+          for (let b = a + 1; b < SUITS.length; b++) {
+            combos.push([rank + SUITS[a], rank + SUITS[b]]);
+          }
+        }
+      } else {
+        const highRank = RANKS[Math.min(i, j)];
+        const lowRank = RANKS[Math.max(i, j)];
+        const suited = i < j;
+        if (suited) {
+          SUITS.forEach(s => combos.push([highRank + s, lowRank + s]));
+        } else {
+          SUITS.forEach(s1 => SUITS.forEach(s2 => {
+            if (s1 !== s2) combos.push([highRank + s1, lowRank + s2]);
+          }));
+        }
+      }
+      const label = i === j
+        ? RANKS[i] + RANKS[j]
+        : (i < j
+          ? RANKS[Math.min(i, j)] + RANKS[Math.max(i, j)] + 's'
+          : RANKS[Math.min(i, j)] + RANKS[Math.max(i, j)] + 'o');
+      cells[i].push({ label, combos, base: combos.length });
+    }
+  }
+
+  // rank 1 = strongest hand, 169 = weakest
+  const rankByLabel = {};
+  HAND_ORDER.forEach((label, idx) => { rankByLabel[label] = idx + 1; });
+  for (let i = 0; i < 13; i++) {
+    for (let j = 0; j < 13; j++) {
+      cells[i][j].rank = rankByLabel[cells[i][j].label];
+    }
+  }
+
+  let rangeCount = 169;
+
+  function usedCards() {
+    return slotDefs.map(s => state[s.key]).filter(Boolean);
+  }
+
+  function gradientColor(fraction) {
+    // fraction 0..1 relative to the strongest remaining hand within the selected range
+    // 1 = most likely (green) -> 0 = least likely (red)
+    const hue = 132 * Math.max(0, Math.min(1, fraction));
+    return `hsl(${hue}, 66%, 54%)`;
+  }
+
+  function buildMatrix() {
+    const matrix = document.getElementById('matrix');
+    matrix.innerHTML = '';
+
+    // corner
+    matrix.appendChild(document.createElement('div'));
+    RANKS.forEach(r => {
+      const h = document.createElement('div');
+      h.className = 'hcell';
+      h.textContent = r;
+      matrix.appendChild(h);
+    });
+
+    for (let i = 0; i < 13; i++) {
+      const rowHeader = document.createElement('div');
+      rowHeader.className = 'hcell';
+      rowHeader.textContent = RANKS[i];
+      matrix.appendChild(rowHeader);
+
+      for (let j = 0; j < 13; j++) {
+        const cellDiv = document.createElement('div');
+        cellDiv.className = 'cell';
+        cellDiv.dataset.i = i;
+        cellDiv.dataset.j = j;
+        const labelSpan = document.createElement('div');
+        labelSpan.className = 'label';
+        labelSpan.textContent = cells[i][j].label;
+        const valueSpan = document.createElement('div');
+        valueSpan.className = 'value';
+        cellDiv.appendChild(labelSpan);
+        cellDiv.appendChild(valueSpan);
+        matrix.appendChild(cellDiv);
+      }
+    }
+  }
+
+  function render() {
+    const used = usedCards();
+    let totalRemaining = 0;
+    const remainingByCell = [];
+
+    for (let i = 0; i < 13; i++) {
+      remainingByCell.push([]);
+      for (let j = 0; j < 13; j++) {
+        const combos = cells[i][j].combos;
+        let remaining = 0;
+        for (const combo of combos) {
+          if (!used.includes(combo[0]) && !used.includes(combo[1])) remaining++;
+        }
+        remainingByCell[i].push(remaining);
+        totalRemaining += remaining;
+      }
+    }
+
+    const matrix = document.getElementById('matrix');
+    const cellDivs = matrix.querySelectorAll('.cell');
+
+    // Pass 1: figure out which cells are in the selected range and the
+    // combo pool that percentages should be conditioned on (sums to 100%).
+    let remainingInRange = 0;
+    let handsInRange = 0;
+    let maxRemainingInRange = 0;
+    cellDivs.forEach(div => {
+      const i = +div.dataset.i;
+      const j = +div.dataset.j;
+      const rank = cells[i][j].rank;
+      if (rank <= rangeCount) {
+        const remaining = remainingByCell[i][j];
+        remainingInRange += remaining;
+        handsInRange++;
+        if (remaining > maxRemainingInRange) maxRemainingInRange = remaining;
+      }
+    });
+
+    // Pass 2: render each cell using remainingInRange as the 100% base.
+    cellDivs.forEach(div => {
+      const i = +div.dataset.i;
+      const j = +div.dataset.j;
+      const remaining = remainingByCell[i][j];
+      const rank = cells[i][j].rank;
+      const included = rank <= rangeCount;
+      const valueSpan = div.querySelector('.value');
+
+      div.classList.toggle('excluded', !included);
+      div.classList.remove('zero');
+
+      if (!included) {
+        div.style.background = '';
+        valueSpan.textContent = '–';
+      } else if (remaining === 0) {
+        div.classList.add('zero');
+        div.style.background = '';
+        valueSpan.textContent = mode === 'percent' ? '0%' : '0';
+      } else {
+        const fraction = maxRemainingInRange ? remaining / maxRemainingInRange : 0;
+        div.style.background = gradientColor(fraction);
+        div.style.color = '#1f2937';
+        valueSpan.textContent = mode === 'percent'
+          ? (remainingInRange ? ((remaining / remainingInRange) * 100).toFixed(2) + '%' : '0%')
+          : String(remaining);
+      }
+    });
+
+    const cardsLeftInDeck = 52 - used.length;
+    document.getElementById('stats').innerHTML =
+      `Karet v balíčku: <strong>${cardsLeftInDeck}</strong> &nbsp;|&nbsp; ` +
+      `Zbývá kombinací soupeře: <strong>${totalRemaining}</strong> z 1326`;
+
+    const rangePercent = Math.round((rangeCount / 169) * 100);
+    document.getElementById('rangePercentLabel').textContent = rangePercent + '%';
+    document.getElementById('rangeCountLabel').textContent = rangeCount + ' hands';
+    document.getElementById('rangeSlider').style.background =
+      `linear-gradient(to right, var(--accent) ${(rangeCount / 169) * 100}%, #e5e7eb ${(rangeCount / 169) * 100}%)`;
+
+    document.getElementById('rangeStats').innerHTML =
+      `Vybraný rozsah: <strong>${handsInRange} / 169</strong> typů rukou &nbsp;|&nbsp; ` +
+      `Základ pro % v matici (100&nbsp;%): <strong>${remainingInRange}</strong> kombinací ` +
+      `(z ${totalRemaining} zbývajících celkem)`;
+  }
+
+  function renderSlots() {
+    const heroWrap = document.getElementById('heroSlots');
+    const boardWrap = document.getElementById('boardSlots');
+    heroWrap.innerHTML = '';
+    boardWrap.innerHTML = '';
+
+    slotDefs.forEach(def => {
+      const div = document.createElement('div');
+      const card = state[def.key];
+      div.className = 'card-slot' + (card ? ' filled' : '');
+      div.dataset.slot = def.key;
+
+      if (card) {
+        const rank = card[0];
+        const suit = card[1];
+        const rankEl = document.createElement('div');
+        rankEl.className = 'rank';
+        rankEl.textContent = rank;
+        rankEl.style.color = SUIT_COLOR[suit];
+        const suitEl = document.createElement('div');
+        suitEl.className = 'suit';
+        suitEl.textContent = SUIT_SYMBOL[suit];
+        suitEl.style.color = SUIT_COLOR[suit];
+        div.appendChild(rankEl);
+        div.appendChild(suitEl);
+
+        const clearBtn = document.createElement('div');
+        clearBtn.className = 'clear-btn';
+        clearBtn.textContent = '×';
+        clearBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          state[def.key] = null;
+          renderSlots();
+          render();
+        });
+        div.appendChild(clearBtn);
+      } else {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'placeholder';
+        placeholder.textContent = '+';
+        div.appendChild(placeholder);
+      }
+
+      div.addEventListener('click', () => openPicker(def.key));
+
+      if (def.group === 'hero') heroWrap.appendChild(div);
+      else boardWrap.appendChild(div);
+    });
+  }
+
+  function openPicker(slotKey) {
+    activeSlot = slotKey;
+    const overlay = document.getElementById('modalOverlay');
+    const grid = document.getElementById('pickerGrid');
+    grid.innerHTML = '';
+
+    const used = usedCards().filter(c => c !== state[slotKey]);
+    const currentCard = state[slotKey];
+
+    // 4 rows (suits) x 13 columns (ranks)
+    SUITS.forEach(suit => {
+      RANKS.forEach(rank => {
+        const cardId = rank + suit;
+        const btn = document.createElement('div');
+        btn.className = 'picker-card';
+        btn.style.color = SUIT_COLOR[suit];
+        btn.textContent = rank + SUIT_SYMBOL[suit];
+
+        if (used.includes(cardId)) {
+          btn.classList.add('disabled');
+        } else {
+          if (cardId === currentCard) btn.classList.add('selected');
+          btn.addEventListener('click', () => {
+            state[slotKey] = cardId;
+            closeModal();
+            renderSlots();
+            render();
+          });
+        }
+        grid.appendChild(btn);
+      });
+    });
+
+    document.getElementById('modalTitle').textContent =
+      slotKey.startsWith('hero') ? 'Vyber svoji kartu' : 'Vyber kartu na stole';
+
+    overlay.classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('open');
+    activeSlot = null;
+  }
+
+  document.getElementById('modalClose').addEventListener('click', closeModal);
+  document.getElementById('modalOverlay').addEventListener('click', (e) => {
+    if (e.target.id === 'modalOverlay') closeModal();
+  });
+  document.getElementById('modalClear').addEventListener('click', () => {
+    if (activeSlot) {
+      state[activeSlot] = null;
+      closeModal();
+      renderSlots();
+      render();
+    }
+  });
+
+  document.getElementById('modePercent').addEventListener('click', () => {
+    mode = 'percent';
+    document.getElementById('modePercent').classList.add('active');
+    document.getElementById('modeCount').classList.remove('active');
+    render();
+  });
+  document.getElementById('modeCount').addEventListener('click', () => {
+    mode = 'count';
+    document.getElementById('modeCount').classList.add('active');
+    document.getElementById('modePercent').classList.remove('active');
+    render();
+  });
+
+  document.getElementById('rangeSlider').addEventListener('input', (e) => {
+    rangeCount = +e.target.value;
+    render();
+  });
+
+  buildMatrix();
+  renderSlots();
+  render();
+})();
+</script>
+</body>
+</html>
