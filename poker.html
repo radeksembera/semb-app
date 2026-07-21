@@ -207,6 +207,40 @@
     color: var(--ink);
   }
 
+  .rank-probabilities {
+    margin-bottom: 28px;
+  }
+
+  .rank-row {
+    display: flex;
+    gap: 6px;
+  }
+
+  .rank-box {
+    flex: 1;
+    min-width: 0;
+    border-radius: 10px;
+    padding: 10px 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(0,0,0,0.08);
+  }
+
+  .rank-box .rank-letter {
+    font-size: 19px;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .rank-box .rank-percent {
+    font-size: 10.5px;
+    font-weight: 400;
+    margin-top: 4px;
+    line-height: 1;
+  }
+
   .cards-section {
     display: flex;
     gap: 32px;
@@ -381,6 +415,10 @@
     <div class="matrix" id="matrix"></div>
   </div>
 
+  <div class="rank-probabilities">
+    <div class="rank-row" id="rankRow"></div>
+  </div>
+
   <div class="range-control">
     <div class="range-header">
       <span class="range-percent" id="rangePercentLabel">100%</span>
@@ -553,6 +591,24 @@
     }
   }
 
+  function buildRankRow() {
+    const row = document.getElementById('rankRow');
+    row.innerHTML = '';
+    RANKS.forEach(r => {
+      const box = document.createElement('div');
+      box.className = 'rank-box';
+      box.dataset.rank = r;
+      const letter = document.createElement('div');
+      letter.className = 'rank-letter';
+      letter.textContent = r;
+      const percent = document.createElement('div');
+      percent.className = 'rank-percent';
+      box.appendChild(letter);
+      box.appendChild(percent);
+      row.appendChild(box);
+    });
+  }
+
   function render() {
     const used = usedCards();
     let totalRemaining = 0;
@@ -579,6 +635,9 @@
     let remainingInRange = 0;
     let handsInRange = 0;
     let maxRemainingInRange = 0;
+    const rankComboCount = {};
+    RANKS.forEach(r => { rankComboCount[r] = 0; });
+
     cellDivs.forEach(div => {
       const i = +div.dataset.i;
       const j = +div.dataset.j;
@@ -588,6 +647,12 @@
         remainingInRange += remaining;
         handsInRange++;
         if (remaining > maxRemainingInRange) maxRemainingInRange = remaining;
+
+        cells[i][j].combos.forEach(combo => {
+          if (used.includes(combo[0]) || used.includes(combo[1])) return;
+          const ranksInCombo = new Set([combo[0][0], combo[1][0]]);
+          ranksInCombo.forEach(r => { rankComboCount[r]++; });
+        });
       }
     });
 
@@ -632,9 +697,19 @@
       `linear-gradient(to right, var(--accent) ${(rangeCount / 169) * 100}%, #e5e7eb ${(rangeCount / 169) * 100}%)`;
 
     document.getElementById('rangeStats').innerHTML =
-      `Vybraný rozsah: <strong>${handsInRange} / 169</strong> typů rukou &nbsp;|&nbsp; ` +
-      `Základ pro % v matici (100&nbsp;%): <strong>${remainingInRange}</strong> kombinací ` +
-      `(z ${totalRemaining} zbývajících celkem)`;
+      `selected: <strong>${handsInRange} / 169</strong> hands &nbsp; ` +
+      `<strong>${remainingInRange}/${totalRemaining}</strong> combos`;
+
+    const maxRankCombo = Math.max(0, ...RANKS.map(r => rankComboCount[r]));
+    document.querySelectorAll('.rank-box').forEach(box => {
+      const r = box.dataset.rank;
+      const count = rankComboCount[r];
+      const pct = remainingInRange ? (count / remainingInRange) * 100 : 0;
+      const fraction = maxRankCombo ? count / maxRankCombo : 0;
+      box.style.background = gradientColor(fraction);
+      box.style.color = '#1f2937';
+      box.querySelector('.rank-percent').textContent = pct.toFixed(1) + '%';
+    });
   }
 
   function renderSlots() {
@@ -763,6 +838,7 @@
   });
 
   buildMatrix();
+  buildRankRow();
   renderSlots();
   render();
 })();
