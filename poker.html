@@ -212,13 +212,12 @@
   }
 
   .rank-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
     gap: 6px;
   }
 
   .rank-box {
-    flex: 1;
-    min-width: 0;
     border-radius: 10px;
     padding: 10px 2px;
     display: flex;
@@ -239,6 +238,47 @@
     font-weight: 400;
     margin-top: 4px;
     line-height: 1;
+  }
+
+  .suit-probabilities {
+    margin-bottom: 28px;
+  }
+
+  .suit-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+    gap: 6px;
+  }
+
+  .suit-box {
+    border-radius: 10px;
+    padding: 10px 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(0,0,0,0.08);
+  }
+
+  .suit-box .suit-symbol {
+    font-size: 22px;
+    line-height: 1;
+  }
+
+  .suit-box .suit-count {
+    font-size: 12px;
+    font-weight: 400;
+    margin-top: 5px;
+    line-height: 1;
+    color: #1f2937;
+  }
+
+  .suit-box .suit-percent {
+    font-size: 10.5px;
+    font-weight: 400;
+    margin-top: 2px;
+    line-height: 1;
+    color: #1f2937;
   }
 
   .cards-section {
@@ -417,6 +457,10 @@
 
   <div class="rank-probabilities">
     <div class="rank-row" id="rankRow"></div>
+  </div>
+
+  <div class="suit-probabilities">
+    <div class="suit-row" id="suitRow"></div>
   </div>
 
   <div class="range-control">
@@ -609,6 +653,30 @@
     });
   }
 
+  const SUIT_DISPLAY_ORDER = ['c', 's', 'd', 'h'];
+
+  function buildSuitRow() {
+    const row = document.getElementById('suitRow');
+    row.innerHTML = '';
+    SUIT_DISPLAY_ORDER.forEach(suit => {
+      const box = document.createElement('div');
+      box.className = 'suit-box';
+      box.dataset.suit = suit;
+      const symbol = document.createElement('div');
+      symbol.className = 'suit-symbol';
+      symbol.textContent = SUIT_SYMBOL[suit];
+      symbol.style.color = SUIT_COLOR[suit];
+      const count = document.createElement('div');
+      count.className = 'suit-count';
+      const percent = document.createElement('div');
+      percent.className = 'suit-percent';
+      box.appendChild(symbol);
+      box.appendChild(count);
+      box.appendChild(percent);
+      row.appendChild(box);
+    });
+  }
+
   function render() {
     const used = usedCards();
     let totalRemaining = 0;
@@ -637,6 +705,8 @@
     let maxRemainingInRange = 0;
     const rankComboCount = {};
     RANKS.forEach(r => { rankComboCount[r] = 0; });
+    const suitComboCount = {};
+    SUITS.forEach(s => { suitComboCount[s] = 0; });
 
     cellDivs.forEach(div => {
       const i = +div.dataset.i;
@@ -652,6 +722,8 @@
           if (used.includes(combo[0]) || used.includes(combo[1])) return;
           const ranksInCombo = new Set([combo[0][0], combo[1][0]]);
           ranksInCombo.forEach(r => { rankComboCount[r]++; });
+          const suitsInCombo = new Set([combo[0][1], combo[1][1]]);
+          suitsInCombo.forEach(s => { suitComboCount[s]++; });
         });
       }
     });
@@ -688,7 +760,7 @@
     const cardsLeftInDeck = 52 - used.length;
     document.getElementById('stats').innerHTML =
       `Karet v balíčku: <strong>${cardsLeftInDeck}</strong> &nbsp;|&nbsp; ` +
-      `Zbývá kombinací soupeře: <strong>${totalRemaining}</strong> z 1326`;
+      `Zbývá kombinací soupeře: <strong>${remainingInRange}</strong> z 1326`;
 
     const rangePercent = Math.round((rangeCount / 169) * 100);
     document.getElementById('rangePercentLabel').textContent = rangePercent + '%';
@@ -709,6 +781,17 @@
       box.style.background = gradientColor(fraction);
       box.style.color = '#1f2937';
       box.querySelector('.rank-percent').textContent = pct.toFixed(1) + '%';
+    });
+
+    const maxSuitCombo = Math.max(0, ...SUITS.map(s => suitComboCount[s]));
+    document.querySelectorAll('.suit-box').forEach(box => {
+      const s = box.dataset.suit;
+      const count = suitComboCount[s];
+      const pct = remainingInRange ? (count / remainingInRange) * 100 : 0;
+      const fraction = maxSuitCombo ? count / maxSuitCombo : 0;
+      box.style.background = gradientColor(fraction);
+      box.querySelector('.suit-count').textContent = count;
+      box.querySelector('.suit-percent').textContent = pct.toFixed(1) + '%';
     });
   }
 
@@ -839,6 +922,7 @@
 
   buildMatrix();
   buildRankRow();
+  buildSuitRow();
   renderSlots();
   render();
 })();
