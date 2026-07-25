@@ -36,14 +36,8 @@
   }
 
   h1 {
-    margin: 0 0 4px;
-    font-size: 24px;
-  }
-
-  .subtitle {
     margin: 0 0 20px;
-    color: var(--muted);
-    font-size: 14px;
+    font-size: 24px;
   }
 
   .controls {
@@ -93,19 +87,9 @@
 
   .matrix {
     display: grid;
-    grid-template-columns: 34px repeat(13, minmax(44px, 1fr));
+    grid-template-columns: repeat(13, minmax(44px, 1fr));
     gap: 2px;
-    min-width: 620px;
-  }
-
-  .hcell {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--muted);
-    height: 28px;
+    min-width: 590px;
   }
 
   .cell {
@@ -441,7 +425,6 @@
 <body>
 <div class="app">
   <h1>Poker Blockers</h1>
-  <p class="subtitle">Odhad rozsahu soupeřových karet v headsupu (Texas Hold'em) na základě odkrytých karet</p>
 
   <div class="controls">
     <div class="toggle">
@@ -449,6 +432,15 @@
       <button id="modeCount">počet</button>
     </div>
     <div class="stats" id="stats"></div>
+  </div>
+
+  <div class="range-control">
+    <div class="range-header">
+      <span class="range-percent" id="rangePercentLabel">100%</span>
+      <span id="rangeCountLabel">169 hands</span>
+    </div>
+    <input type="range" class="range-slider" id="rangeSlider" min="1" max="169" value="169" />
+    <div class="range-stats" id="rangeStats"></div>
   </div>
 
   <div class="matrix-wrap">
@@ -461,15 +453,6 @@
 
   <div class="suit-probabilities">
     <div class="suit-row" id="suitRow"></div>
-  </div>
-
-  <div class="range-control">
-    <div class="range-header">
-      <span class="range-percent" id="rangePercentLabel">100%</span>
-      <span id="rangeCountLabel">169 hands</span>
-    </div>
-    <input type="range" class="range-slider" id="rangeSlider" min="1" max="169" value="169" />
-    <div class="range-stats" id="rangeStats"></div>
   </div>
 
   <div class="cards-section">
@@ -603,21 +586,7 @@
     const matrix = document.getElementById('matrix');
     matrix.innerHTML = '';
 
-    // corner
-    matrix.appendChild(document.createElement('div'));
-    RANKS.forEach(r => {
-      const h = document.createElement('div');
-      h.className = 'hcell';
-      h.textContent = r;
-      matrix.appendChild(h);
-    });
-
     for (let i = 0; i < 13; i++) {
-      const rowHeader = document.createElement('div');
-      rowHeader.className = 'hcell';
-      rowHeader.textContent = RANKS[i];
-      matrix.appendChild(rowHeader);
-
       for (let j = 0; j < 13; j++) {
         const cellDiv = document.createElement('div');
         cellDiv.className = 'cell';
@@ -759,8 +728,8 @@
 
     const cardsLeftInDeck = 52 - used.length;
     document.getElementById('stats').innerHTML =
-      `Karet v balíčku: <strong>${cardsLeftInDeck}</strong> &nbsp;|&nbsp; ` +
-      `Zbývá kombinací soupeře: <strong>${remainingInRange}</strong> z 1326`;
+      `Karet: <strong>${cardsLeftInDeck}</strong> &nbsp;|&nbsp; ` +
+      `Soupeř: <strong>${remainingInRange}</strong> z 1326`;
 
     const rangePercent = Math.round((rangeCount / 169) * 100);
     document.getElementById('rangePercentLabel').textContent = rangePercent + '%';
