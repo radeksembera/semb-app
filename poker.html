@@ -71,15 +71,6 @@
     font-weight: 600;
   }
 
-  .stats {
-    font-size: 13px;
-    color: var(--muted);
-  }
-
-  .stats strong {
-    color: var(--ink);
-  }
-
   .matrix-wrap {
     overflow-x: auto;
     margin-bottom: 28px;
@@ -431,7 +422,6 @@
       <button id="modePercent" class="active">%</button>
       <button id="modeCount">počet</button>
     </div>
-    <div class="stats" id="stats"></div>
   </div>
 
   <div class="range-control">
@@ -725,11 +715,6 @@
           : String(remaining);
       }
     });
-
-    const cardsLeftInDeck = 52 - used.length;
-    document.getElementById('stats').innerHTML =
-      `Karet: <strong>${cardsLeftInDeck}</strong> &nbsp;|&nbsp; ` +
-      `Soupeř: <strong>${remainingInRange}</strong> z 1326`;
 
     const rangePercent = Math.round((rangeCount / 169) * 100);
     document.getElementById('rangePercentLabel').textContent = rangePercent + '%';
