@@ -723,7 +723,7 @@
       `linear-gradient(to right, var(--accent) ${(rangeCount / 169) * 100}%, #e5e7eb ${(rangeCount / 169) * 100}%)`;
 
     document.getElementById('rangeStats').innerHTML =
-      `selected: <strong>${handsInRange} / 169</strong> hands &nbsp; ` +
+      `<strong>${handsInRange} / 169</strong> hands &nbsp; ` +
       `<strong>${remainingInRange}/${totalRemaining}</strong> combos`;
 
     const maxRankCombo = Math.max(0, ...RANKS.map(r => rankComboCount[r]));
