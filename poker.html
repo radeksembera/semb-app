@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Poker Blockers</title>
+
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="poker-favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="poker-favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="poker-apple-touch-icon.png" />
+<link rel="manifest" href="poker-manifest.json" />
+<meta name="theme-color" content="#4338ca" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Poker Blockers" />
+
+<style>
+  :root {
+    --page-bg-1: #f7f8fa;
+    --page-bg-2: #e8eaed;
+    --panel-bg: #ffffff;
+    --modal-bg: #ffffff;
+    --ink: #1f2937;
+    --muted: #6b7280;
+    --accent: #4338ca;
+    --slot-empty: #e5e7eb;
+    --slot-border: #c5cad2;
+    --border: #d1d5db;
+    --border-soft: rgba(0,0,0,0.08);
+    --surface-soft: #f9fafb;
+    --surface-soft-border: #e5e7eb;
+    --cell-zero-bg: #eef0f2;
+    --cell-zero-text: #b8bec7;
+    --cell-excluded-bg: #d5dae1;
+    --cell-excluded-text: #9aa3af;
+    --shadow: rgba(0,0,0,0.35);
+    --shadow-modal: rgba(0,0,0,0.4);
+  }
+
+  :root[data-theme="dark"] {
+    --page-bg-1: #1b1e25;
+    --page-bg-2: #05060a;
+    --panel-bg: #1c1e24;
+    --modal-bg: #22252c;
+    --ink: #e8eaed;
+    --muted: #9aa1ac;
+    --accent: #818cf8;
+    --slot-empty: #262a33;
+    --slot-border: #3a3f4a;
+    --border: #3a3f4a;
+    --border-soft: rgba(255,255,255,0.08);
+    --surface-soft: #22252c;
+    --surface-soft-border: #2f333c;
+    --cell-zero-bg: #22252c;
+    --cell-zero-text: #4b515c;
+    --cell-excluded-bg: #262a33;
+    --cell-excluded-text: #565c68;
+    --shadow: rgba(0,0,0,0.6);
+    --shadow-modal: rgba(0,0,0,0.6);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: radial-gradient(ellipse at top, var(--page-bg-1), var(--page-bg-2));
+    min-height: 100vh;
+    color: var(--ink);
+    padding: 24px 16px 60px;
+    transition: background-color 0.2s ease;
+  }
+
+  .app {
+    max-width: 880px;
+    margin: 0 auto;
+    background: var(--panel-bg);
+    border-radius: 16px;
+    padding: 24px 28px 32px;
+    box-shadow: 0 20px 50px var(--shadow);
+    transition: background-color 0.2s ease;
+  }
+
+  .header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 24px;
+  }
+
+  .theme-toggle {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface-soft);
+    color: var(--ink);
+    font-size: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .toggle {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .toggle button {
+    border: none;
+    background: var(--surface-soft);
+    padding: 8px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--muted);
+  }
+
+  .toggle button.active {
+    background: var(--accent);
+    color: white;
+    font-weight: 600;
+  }
+
+  .matrix-wrap {
+    overflow-x: auto;
+    margin-bottom: 28px;
+  }
+
+  .matrix {
+    display: grid;
+    grid-template-columns: repeat(13, minmax(44px, 1fr));
+    gap: 2px;
+    min-width: 590px;
+  }
+
+  .cell {
+    aspect-ratio: 1 / 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    font-size: 10.5px;
+    line-height: 1.2;
+    transition: background-color 0.15s ease;
+    user-select: none;
+  }
+
+  .cell .label {
+    font-weight: 700;
+    font-size: 10.5px;
+  }
+
+  .cell .value {
+    font-size: 9.5px;
+    opacity: 0.9;
+  }
+
+  .cell.zero {
+    background: var(--cell-zero-bg) !important;
+    color: var(--cell-zero-text) !important;
+  }
+
+  .cell.excluded {
+    background: var(--cell-excluded-bg) !important;
+    color: var(--cell-excluded-text) !important;
+    opacity: 0.55;
+    filter: grayscale(70%);
+  }
+
+  .range-control {
+    margin-bottom: 28px;
+    padding: 16px 18px;
+    background: var(--surface-soft);
+    border: 1px solid var(--surface-soft-border);
+    border-radius: 12px;
+  }
+
+  .range-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+
+  .range-header .range-percent {
+    font-size: 20px;
+    color: var(--accent);
+  }
+
+  input[type="range"].range-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--border);
+    outline: none;
+    margin: 6px 0 12px;
+  }
+
+  input[type="range"].range-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid var(--accent);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    cursor: pointer;
+  }
+
+  input[type="range"].range-slider::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid var(--accent);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    cursor: pointer;
+  }
+
+  .range-stats {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .range-stats strong {
+    color: var(--ink);
+  }
+
+  .rank-probabilities {
+    margin-bottom: 28px;
+  }
+
+  .rank-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
+    gap: 6px;
+  }
+
+  .rank-box {
+    border-radius: 10px;
+    padding: 10px 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-soft);
+  }
+
+  .rank-box .rank-letter {
+    font-size: 19px;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .rank-box .rank-percent {
+    font-size: 10.5px;
+    font-weight: 400;
+    margin-top: 4px;
+    line-height: 1;
+  }
+
+  .suit-probabilities {
+    margin-bottom: 28px;
+  }
+
+  .suit-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+    gap: 6px;
+  }
+
+  .suit-box {
+    border-radius: 10px;
+    padding: 10px 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-soft);
+  }
+
+  .suit-box .suit-symbol {
+    font-size: 22px;
+    line-height: 1;
+  }
+
+  .suit-box .suit-count {
+    font-size: 12px;
+    font-weight: 400;
+    margin-top: 5px;
+    line-height: 1;
+    color: #1f2937;
+  }
+
+  .suit-box .suit-percent {
+    font-size: 10.5px;
+    font-weight: 400;
+    margin-top: 2px;
+    line-height: 1;
+    color: #1f2937;
+  }
+
+  .cards-section {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+
+  .card-group h2 {
+    font-size: 14px;
+    margin: 0 0 10px;
+    color: var(--ink);
+  }
+
+  .slots {
+    display: flex;
+    gap: 8px;
+  }
+
+  .card-slot {
+    position: relative;
+    width: 52px;
+    height: 72px;
+    border-radius: 8px;
+    background: var(--slot-empty);
+    border: 2px dashed var(--slot-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  .card-slot.filled {
+    background: #ffffff;
+    border: 2px solid var(--slot-border);
+    flex-direction: column;
+  }
+
+  .card-slot .placeholder {
+    color: var(--muted);
+    font-size: 22px;
+    font-weight: 400;
+  }
+
+  .card-slot .rank {
+    font-size: 22px;
+  }
+
+  .card-slot .suit {
+    font-size: 18px;
+    margin-top: -4px;
+  }
+
+  .card-slot .clear-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #374151;
+    color: white;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 16px;
+  }
+
+  .modal-overlay.open {
+    display: flex;
+  }
+
+  .modal {
+    background: var(--modal-bg);
+    border-radius: 12px;
+    padding: 18px;
+    width: 100%;
+    max-width: 480px;
+    box-shadow: 0 20px 50px var(--shadow-modal);
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    font-weight: 700;
+  }
+
+  .modal-header button {
+    border: none;
+    background: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--muted);
+  }
+
+  .picker-grid {
+    display: grid;
+    grid-template-columns: repeat(13, 1fr);
+    gap: 4px;
+  }
+
+  .picker-card {
+    aspect-ratio: 3 / 4;
+    border: 1px solid #d1d5db;
+    border-radius: 5px;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .picker-card:hover:not(.disabled) {
+    background: #f3f4f6;
+  }
+
+  .picker-card.selected {
+    outline: 2px solid var(--accent);
+    background: #eef2ff;
+  }
+
+  .picker-card.disabled {
+    background: #f3f4f6;
+    color: #d1d5db !important;
+    cursor: not-allowed;
+  }
+
+  .modal-clear {
+    margin-top: 14px;
+    width: 100%;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid var(--surface-soft-border);
+    background: var(--surface-soft);
+    color: var(--ink);
+    cursor: pointer;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header-row">
+    <h1>Poker Blockers</h1>
+    <button id="themeToggle" class="theme-toggle" type="button" aria-label="Přepnout tmavý režim">🌙</button>
+  </div>
+
+  <div class="controls">
+    <div class="toggle">
+      <button id="modePercent" class="active">%</button>
+      <button id="modeCount">počet</button>
+    </div>
+  </div>
+
+  <div class="range-control">
+    <div class="range-header">
+      <span class="range-percent" id="rangePercentLabel">100%</span>
+      <span id="rangeCountLabel">169 hands</span>
+    </div>
+    <input type="range" class="range-slider" id="rangeSlider" min="1" max="169" value="169" />
+    <div class="range-stats" id="rangeStats"></div>
+  </div>
+
+  <div class="matrix-wrap">
+    <div class="matrix" id="matrix"></div>
+  </div>
+
+  <div class="rank-probabilities">
+    <div class="rank-row" id="rankRow"></div>
+  </div>
+
+  <div class="suit-probabilities">
+    <div class="suit-row" id="suitRow"></div>
+  </div>
+
+  <div class="cards-section">
+    <div class="card-group">
+      <h2>Moje karty</h2>
+      <div class="slots" id="heroSlots"></div>
+    </div>
+    <div class="card-group">
+      <h2>Karty na stole</h2>
+      <div class="slots" id="boardSlots"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <span id="modalTitle">Vyber kartu</span>
+      <button id="modalClose">×</button>
+    </div>
+    <div class="picker-grid" id="pickerGrid"></div>
+    <button class="modal-clear" id="modalClear">Vymazat kartu</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  const RANKS = ['A','K','Q','J','T','9','8','7','6','5','4','3','2'];
+  const SUITS = ['s','h','d','c'];
+  const SUIT_SYMBOL = { s: '♠', h: '♥', d: '♦', c: '♣' };
+  const SUIT_COLOR = { s: '#1f2937', h: '#dc2626', d: '#2563eb', c: '#16a34a' };
+
+  // 169 starting hands ranked from strongest (index 0) to weakest (index 168),
+  // matching the standard heads-up all-in-equity ranking used by common range sliders.
+  const HAND_ORDER = [
+    'AA','KK','QQ','AKs','JJ','TT','AQs','AJs','KQs','AKo','KJs',
+    'AQo','ATs','KTs','QJs','99','QTs','KQo','AJo','JTs',
+    'A8s','A9s','K9s','88','KJo','A7s','ATo','QJo','A5s','Q9s','T9s',
+    'A4s','A6s','J9s','KTo','A3s','JTo','QTo',
+    '77','A2s','K7s','K8s','Q8s','98s','A9o','K5s','T8s',
+    'J8s','K4s','K6s','K9o','Q7s','66','A8o','T9o',
+    '87s','97s','A5o','J7s','J9o','Q9o','T7s','A7o','Q5s','Q6s',
+    '76s','86s','A4o','A6o','K2s','K3s','Q4s','96s','Q3s',
+    '55','A3o','K8o','J5s','Q2s','T6s',
+    '65s','75s','J6s','J8o','K7o','Q8o','T8o',
+    '44','98o','A2o','J4s','K6o','54s','64s','85s','J3s','T5s',
+    '95s','J2s','K5o','T4s','33','87o','Q7o','T3s','T7o',
+    '74s','97o','K4o','53s','84s','94s','J7o','K3o','Q6o','T2s',
+    '22','63s','93s','43s','76o','K2o','Q5o',
+    '52s','73s','86o','92s','J6o','T6o',
+    '42s','62s','65o','83s','96o','Q4o',
+    '32s','54o','72s','75o','82s','J5o','Q3o',
+    '85o','95o','J4o','Q2o','T5o','53o','64o','J2o','J3o','T4o',
+    '43o','74o','84o','T2o','T3o','52o','63o','73o','93o','94o',
+    '42o','62o','82o','83o','92o','32o','72o',
+  ];
+
+  const slotDefs = [
+    { key: 'hero0', group: 'hero' },
+    { key: 'hero1', group: 'hero' },
+    { key: 'board0', group: 'board' },
+    { key: 'board1', group: 'board' },
+    { key: 'board2', group: 'board' },
+    { key: 'board3', group: 'board' },
+    { key: 'board4', group: 'board' },
+  ];
+
+  const state = {};
+  slotDefs.forEach(s => { state[s.key] = null; });
+
+  let mode = 'percent';
+  let activeSlot = null;
+
+  // Precompute all 169 hand-type cells and their concrete card combos.
+  const cells = [];
+  for (let i = 0; i < 13; i++) {
+    cells.push([]);
+    for (let j = 0; j < 13; j++) {
+      const combos = [];
+      if (i === j) {
+        const rank = RANKS[i];
+        for (let a = 0; a < SUITS.length; a++) {
+          for (let b = a + 1; b < SUITS.length; b++) {
+            combos.push([rank + SUITS[a], rank + SUITS[b]]);
+          }
+        }
+      } else {
+        const highRank = RANKS[Math.min(i, j)];
+        const lowRank = RANKS[Math.max(i, j)];
+        const suited = i < j;
+        if (suited) {
+          SUITS.forEach(s => combos.push([highRank + s, lowRank + s]));
+        } else {
+          SUITS.forEach(s1 => SUITS.forEach(s2 => {
+            if (s1 !== s2) combos.push([highRank + s1, lowRank + s2]);
+          }));
+        }
+      }
+      const label = i === j
+        ? RANKS[i] + RANKS[j]
+        : (i < j
+          ? RANKS[Math.min(i, j)] + RANKS[Math.max(i, j)] + 's'
+          : RANKS[Math.min(i, j)] + RANKS[Math.max(i, j)] + 'o');
+      cells[i].push({ label, combos, base: combos.length });
+    }
+  }
+
+  // rank 1 = strongest hand, 169 = weakest
+  const rankByLabel = {};
+  HAND_ORDER.forEach((label, idx) => { rankByLabel[label] = idx + 1; });
+  for (let i = 0; i < 13; i++) {
+    for (let j = 0; j < 13; j++) {
+      cells[i][j].rank = rankByLabel[cells[i][j].label];
+    }
+  }
+
+  let rangeCount = 169;
+
+  function usedCards() {
+    return slotDefs.map(s => state[s.key]).filter(Boolean);
+  }
+
+  function gradientColor(fraction) {
+    // fraction 0..1 relative to the strongest remaining hand within the selected range
+    // 1 = most likely (green) -> 0 = least likely (red)
+    const hue = 132 * Math.max(0, Math.min(1, fraction));
+    return `hsl(${hue}, 66%, 54%)`;
+  }
+
+  function buildMatrix() {
+    const matrix = document.getElementById('matrix');
+    matrix.innerHTML = '';
+
+    for (let i = 0; i < 13; i++) {
+      for (let j = 0; j < 13; j++) {
+        const cellDiv = document.createElement('div');
+        cellDiv.className = 'cell';
+        cellDiv.dataset.i = i;
+        cellDiv.dataset.j = j;
+        const labelSpan = document.createElement('div');
+        labelSpan.className = 'label';
+        labelSpan.textContent = cells[i][j].label;
+        const valueSpan = document.createElement('div');
+        valueSpan.className = 'value';
+        cellDiv.appendChild(labelSpan);
+        cellDiv.appendChild(valueSpan);
+        matrix.appendChild(cellDiv);
+      }
+    }
+  }
+
+  function buildRankRow() {
+    const row = document.getElementById('rankRow');
+    row.innerHTML = '';
+    RANKS.forEach(r => {
+      const box = document.createElement('div');
+      box.className = 'rank-box';
+      box.dataset.rank = r;
+      const letter = document.createElement('div');
+      letter.className = 'rank-letter';
+      letter.textContent = r;
+      const percent = document.createElement('div');
+      percent.className = 'rank-percent';
+      box.appendChild(letter);
+      box.appendChild(percent);
+      row.appendChild(box);
+    });
+  }
+
+  const SUIT_DISPLAY_ORDER = ['c', 's', 'd', 'h'];
+
+  function buildSuitRow() {
+    const row = document.getElementById('suitRow');
+    row.innerHTML = '';
+    SUIT_DISPLAY_ORDER.forEach(suit => {
+      const box = document.createElement('div');
+      box.className = 'suit-box';
+      box.dataset.suit = suit;
+      const symbol = document.createElement('div');
+      symbol.className = 'suit-symbol';
+      symbol.textContent = SUIT_SYMBOL[suit];
+      symbol.style.color = SUIT_COLOR[suit];
+      const count = document.createElement('div');
+      count.className = 'suit-count';
+      const percent = document.createElement('div');
+      percent.className = 'suit-percent';
+      box.appendChild(symbol);
+      box.appendChild(count);
+      box.appendChild(percent);
+      row.appendChild(box);
+    });
+  }
+
+  function render() {
+    const used = usedCards();
+    let totalRemaining = 0;
+    const remainingByCell = [];
+
+    for (let i = 0; i < 13; i++) {
+      remainingByCell.push([]);
+      for (let j = 0; j < 13; j++) {
+        const combos = cells[i][j].combos;
+        let remaining = 0;
+        for (const combo of combos) {
+          if (!used.includes(combo[0]) && !used.includes(combo[1])) remaining++;
+        }
+        remainingByCell[i].push(remaining);
+        totalRemaining += remaining;
+      }
+    }
+
+    const matrix = document.getElementById('matrix');
+    const cellDivs = matrix.querySelectorAll('.cell');
+
+    // Pass 1: figure out which cells are in the selected range and the
+    // combo pool that percentages should be conditioned on (sums to 100%).
+    let remainingInRange = 0;
+    let handsInRange = 0;
+    let maxRemainingInRange = 0;
+    const rankComboCount = {};
+    RANKS.forEach(r => { rankComboCount[r] = 0; });
+    const suitComboCount = {};
+    SUITS.forEach(s => { suitComboCount[s] = 0; });
+
+    cellDivs.forEach(div => {
+      const i = +div.dataset.i;
+      const j = +div.dataset.j;
+      const rank = cells[i][j].rank;
+      if (rank <= rangeCount) {
+        const remaining = remainingByCell[i][j];
+        remainingInRange += remaining;
+        handsInRange++;
+        if (remaining > maxRemainingInRange) maxRemainingInRange = remaining;
+
+        cells[i][j].combos.forEach(combo => {
+          if (used.includes(combo[0]) || used.includes(combo[1])) return;
+          const ranksInCombo = new Set([combo[0][0], combo[1][0]]);
+          ranksInCombo.forEach(r => { rankComboCount[r]++; });
+          const suitsInCombo = new Set([combo[0][1], combo[1][1]]);
+          suitsInCombo.forEach(s => { suitComboCount[s]++; });
+        });
+      }
+    });
+
+    // Pass 2: render each cell using remainingInRange as the 100% base.
+    cellDivs.forEach(div => {
+      const i = +div.dataset.i;
+      const j = +div.dataset.j;
+      const remaining = remainingByCell[i][j];
+      const rank = cells[i][j].rank;
+      const included = rank <= rangeCount;
+      const valueSpan = div.querySelector('.value');
+
+      div.classList.toggle('excluded', !included);
+      div.classList.remove('zero');
+
+      if (!included) {
+        div.style.background = '';
+        valueSpan.textContent = '–';
+      } else if (remaining === 0) {
+        div.classList.add('zero');
+        div.style.background = '';
+        valueSpan.textContent = mode === 'percent' ? '0%' : '0';
+      } else {
+        const fraction = maxRemainingInRange ? remaining / maxRemainingInRange : 0;
+        div.style.background = gradientColor(fraction);
+        div.style.color = '#1f2937';
+        valueSpan.textContent = mode === 'percent'
+          ? (remainingInRange ? ((remaining / remainingInRange) * 100).toFixed(2) + '%' : '0%')
+          : String(remaining);
+      }
+    });
+
+    const rangePercent = Math.round((rangeCount / 169) * 100);
+    document.getElementById('rangePercentLabel').textContent = rangePercent + '%';
+    document.getElementById('rangeCountLabel').textContent = rangeCount + ' hands';
+    document.getElementById('rangeSlider').style.background =
+      `linear-gradient(to right, var(--accent) ${(rangeCount / 169) * 100}%, var(--border) ${(rangeCount / 169) * 100}%)`;
+
+    document.getElementById('rangeStats').innerHTML =
+      `<strong>${handsInRange} / 169</strong> hands &nbsp; ` +
+      `<strong>${remainingInRange}/${totalRemaining}</strong> combos`;
+
+    const maxRankCombo = Math.max(0, ...RANKS.map(r => rankComboCount[r]));
+    document.querySelectorAll('.rank-box').forEach(box => {
+      const r = box.dataset.rank;
+      const count = rankComboCount[r];
+      const pct = remainingInRange ? (count / remainingInRange) * 100 : 0;
+      const fraction = maxRankCombo ? count / maxRankCombo : 0;
+      box.style.background = gradientColor(fraction);
+      box.style.color = '#1f2937';
+      box.querySelector('.rank-percent').textContent = pct.toFixed(1) + '%';
+    });
+
+    const maxSuitCombo = Math.max(0, ...SUITS.map(s => suitComboCount[s]));
+    document.querySelectorAll('.suit-box').forEach(box => {
+      const s = box.dataset.suit;
+      const count = suitComboCount[s];
+      const pct = remainingInRange ? (count / remainingInRange) * 100 : 0;
+      const fraction = maxSuitCombo ? count / maxSuitCombo : 0;
+      box.style.background = gradientColor(fraction);
+      box.querySelector('.suit-count').textContent = count;
+      box.querySelector('.suit-percent').textContent = pct.toFixed(1) + '%';
+    });
+  }
+
+  function renderSlots() {
+    const heroWrap = document.getElementById('heroSlots');
+    const boardWrap = document.getElementById('boardSlots');
+    heroWrap.innerHTML = '';
+    boardWrap.innerHTML = '';
+
+    slotDefs.forEach(def => {
+      const div = document.createElement('div');
+      const card = state[def.key];
+      div.className = 'card-slot' + (card ? ' filled' : '');
+      div.dataset.slot = def.key;
+
+      if (card) {
+        const rank = card[0];
+        const suit = card[1];
+        const rankEl = document.createElement('div');
+        rankEl.className = 'rank';
+        rankEl.textContent = rank;
+        rankEl.style.color = SUIT_COLOR[suit];
+        const suitEl = document.createElement('div');
+        suitEl.className = 'suit';
+        suitEl.textContent = SUIT_SYMBOL[suit];
+        suitEl.style.color = SUIT_COLOR[suit];
+        div.appendChild(rankEl);
+        div.appendChild(suitEl);
+
+        const clearBtn = document.createElement('div');
+        clearBtn.className = 'clear-btn';
+        clearBtn.textContent = '×';
+        clearBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          state[def.key] = null;
+          renderSlots();
+          render();
+        });
+        div.appendChild(clearBtn);
+      } else {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'placeholder';
+        placeholder.textContent = '+';
+        div.appendChild(placeholder);
+      }
+
+      div.addEventListener('click', () => openPicker(def.key));
+
+      if (def.group === 'hero') heroWrap.appendChild(div);
+      else boardWrap.appendChild(div);
+    });
+  }
+
+  function openPicker(slotKey) {
+    activeSlot = slotKey;
+    const overlay = document.getElementById('modalOverlay');
+    const grid = document.getElementById('pickerGrid');
+    grid.innerHTML = '';
+
+    const used = usedCards().filter(c => c !== state[slotKey]);
+    const currentCard = state[slotKey];
+
+    // 4 rows (suits) x 13 columns (ranks)
+    SUITS.forEach(suit => {
+      RANKS.forEach(rank => {
+        const cardId = rank + suit;
+        const btn = document.createElement('div');
+        btn.className = 'picker-card';
+        btn.style.color = SUIT_COLOR[suit];
+        btn.textContent = rank + SUIT_SYMBOL[suit];
+
+        if (used.includes(cardId)) {
+          btn.classList.add('disabled');
+        } else {
+          if (cardId === currentCard) btn.classList.add('selected');
+          btn.addEventListener('click', () => {
+            state[slotKey] = cardId;
+            closeModal();
+            renderSlots();
+            render();
+          });
+        }
+        grid.appendChild(btn);
+      });
+    });
+
+    document.getElementById('modalTitle').textContent =
+      slotKey.startsWith('hero') ? 'Vyber svoji kartu' : 'Vyber kartu na stole';
+
+    overlay.classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('open');
+    activeSlot = null;
+  }
+
+  document.getElementById('modalClose').addEventListener('click', closeModal);
+  document.getElementById('modalOverlay').addEventListener('click', (e) => {
+    if (e.target.id === 'modalOverlay') closeModal();
+  });
+  document.getElementById('modalClear').addEventListener('click', () => {
+    if (activeSlot) {
+      state[activeSlot] = null;
+      closeModal();
+      renderSlots();
+      render();
+    }
+  });
+
+  document.getElementById('modePercent').addEventListener('click', () => {
+    mode = 'percent';
+    document.getElementById('modePercent').classList.add('active');
+    document.getElementById('modeCount').classList.remove('active');
+    render();
+  });
+  document.getElementById('modeCount').addEventListener('click', () => {
+    mode = 'count';
+    document.getElementById('modeCount').classList.add('active');
+    document.getElementById('modePercent').classList.remove('active');
+    render();
+  });
+
+  document.getElementById('rangeSlider').addEventListener('input', (e) => {
+    rangeCount = +e.target.value;
+    render();
+  });
+
+  const THEME_KEY = 'pokerBlockersTheme';
+  const themeToggleBtn = document.getElementById('themeToggle');
+
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    themeToggleBtn.textContent = theme === 'dark' ? '☀️' : '🌙';
+    themeToggleBtn.setAttribute('aria-label', theme === 'dark' ? 'Přepnout na světlý režim' : 'Přepnout na tmavý režim');
+    localStorage.setItem(THEME_KEY, theme);
+  }
+
+  function preferredTheme() {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved === 'light' || saved === 'dark') return saved;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  let currentTheme = preferredTheme();
+  applyTheme(currentTheme);
+
+  themeToggleBtn.addEventListener('click', () => {
+    currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    applyTheme(currentTheme);
+  });
+
+  buildMatrix();
+  buildRankRow();
+  buildSuitRow();
+  renderSlots();
+  render();
+})();
+</script>
+</body>
+</html>
