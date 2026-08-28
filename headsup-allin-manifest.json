@@ -1,0 +1,14 @@
+{
+  "name": "Heads-up All-in",
+  "short_name": "HU All-in",
+  "description": "Přibližná equity preflop all-in srážek v headsupu",
+  "start_url": "headsup-allin.html",
+  "scope": "headsup-allin.html",
+  "display": "standalone",
+  "background_color": "#3730a3",
+  "theme_color": "#4338ca",
+  "icons": [
+    { "src": "poker-icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "poker-icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

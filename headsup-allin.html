@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Heads-up All-in · Poker Tools</title>
+
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="poker-favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="poker-favicon-16.png" sizes="16x16" type="image/png" />
+<link rel="apple-touch-icon" href="poker-apple-touch-icon.png" />
+<link rel="manifest" href="headsup-allin-manifest.json" />
+<meta name="theme-color" content="#4338ca" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Heads-up All-in" />
+
+<style>
+  :root {
+    --page-bg-1: #f7f8fa;
+    --page-bg-2: #e8eaed;
+    --panel-bg: #ffffff;
+    --modal-bg: #ffffff;
+    --ink: #1f2937;
+    --muted: #6b7280;
+    --accent: #4338ca;
+    --slot-empty: #e5e7eb;
+    --slot-border: #c5cad2;
+    --border: #d1d5db;
+    --border-soft: rgba(0,0,0,0.08);
+    --surface-soft: #f9fafb;
+    --surface-soft-border: #e5e7eb;
+    --cell-zero-bg: #eef0f2;
+    --cell-zero-text: #b8bec7;
+    --cell-excluded-bg: #d5dae1;
+    --cell-excluded-text: #9aa3af;
+    --shadow: rgba(0,0,0,0.35);
+    --shadow-modal: rgba(0,0,0,0.4);
+  }
+
+  :root[data-theme="dark"] {
+    --page-bg-1: #1b1e25;
+    --page-bg-2: #05060a;
+    --panel-bg: #1c1e24;
+    --modal-bg: #22252c;
+    --ink: #e8eaed;
+    --muted: #9aa1ac;
+    --accent: #818cf8;
+    --slot-empty: #262a33;
+    --slot-border: #3a3f4a;
+    --border: #3a3f4a;
+    --border-soft: rgba(255,255,255,0.08);
+    --surface-soft: #22252c;
+    --surface-soft-border: #2f333c;
+    --cell-zero-bg: #22252c;
+    --cell-zero-text: #4b515c;
+    --cell-excluded-bg: #262a33;
+    --cell-excluded-text: #565c68;
+    --shadow: rgba(0,0,0,0.6);
+    --shadow-modal: rgba(0,0,0,0.6);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: radial-gradient(ellipse at top, var(--page-bg-1), var(--page-bg-2));
+    min-height: 100vh;
+    color: var(--ink);
+    padding: 24px 16px 60px;
+    transition: background-color 0.2s ease;
+  }
+
+  .app {
+    max-width: 880px;
+    margin: 0 auto;
+    background: var(--panel-bg);
+    border-radius: 16px;
+    padding: 24px 28px 32px;
+    box-shadow: 0 20px 50px var(--shadow);
+    transition: background-color 0.2s ease;
+  }
+
+  .header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 24px;
+  }
+
+  .theme-toggle {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface-soft);
+    color: var(--ink);
+    font-size: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+
+  .tab {
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--muted);
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+  }
+
+  .tab:hover {
+    color: var(--ink);
+  }
+
+  .tab.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+
+  .subtitle {
+    font-size: 14px;
+    color: var(--muted);
+    margin: 0 0 28px;
+    line-height: 1.5;
+  }
+
+  .group-title {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin: 28px 0 12px;
+  }
+
+  .group-title:first-of-type {
+    margin-top: 0;
+  }
+
+  .matchup-row {
+    margin-bottom: 18px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: var(--surface-soft);
+    border: 1px solid var(--surface-soft-border);
+  }
+
+  .matchup-row.featured {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent) inset;
+  }
+
+  .matchup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .matchup-category {
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  .matchup-hands {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .hand-chip {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 6px;
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    font-weight: 800;
+    font-size: 13px;
+    color: var(--ink);
+    letter-spacing: 0.02em;
+  }
+
+  .vs-sep {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  .equity-bar {
+    display: flex;
+    height: 16px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--cell-excluded-bg);
+  }
+
+  .equity-fill {
+    background: linear-gradient(90deg, var(--accent), #7c6ff0);
+  }
+
+  .equity-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: 800;
+    margin-top: 6px;
+  }
+
+  .equity-labels .favorite {
+    color: var(--accent);
+  }
+
+  .equity-labels .underdog {
+    color: var(--muted);
+  }
+
+  .legend-note {
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header-row">
+    <h1>Heads-up All-in</h1>
+    <button id="themeToggle" class="theme-toggle" type="button" aria-label="Přepnout tmavý režim">🌙</button>
+  </div>
+
+  <nav class="tabs">
+    <a href="poker.html" class="tab">Blockers</a>
+    <a href="headsup-allin.html" class="tab active">Heads-up All-in</a>
+    <a href="pot-odds.html" class="tab">Pot Odds</a>
+  </nav>
+
+  <p class="subtitle">Přibližná equity preflop all-in v headsupu podle typu srážky. Delší, tmavší pruh = vyšší šance na výhru.</p>
+
+  <div id="groups"></div>
+</div>
+
+<script>
+(function () {
+  const MATCHUPS = [
+    { group: 'Pár vs pár', category: 'Vyšší pár vs nižší pár', handA: 'QQ', handB: '88', pctA: 81, pctB: 19 },
+    { group: 'Pár vs pár', category: 'Klasický cooler', handA: 'AA', handB: 'KK', pctA: 82, pctB: 18, featured: true },
+
+    { group: 'Pár vs overcards', category: 'Pár vs 2 overcards', handA: '88', handB: 'AK', pctA: 54, pctB: 46 },
+    { group: 'Pár vs overcards', category: 'Pár vs 1 overcard + 1 undercard', handA: 'QQ', handB: 'AJ', pctA: 70, pctB: 30, approx: true },
+    { group: 'Pár vs overcards', category: 'Pár vs suited connectory', handA: 'TT', handB: '87s', pctA: 53.5, pctB: 46.5, rangeLabel: '~52–55 : 45–48' },
+    { group: 'Pár vs overcards', category: 'Silný pár vs suited connectory', handA: 'AA', handB: '87s', pctA: 77, pctB: 23, approx: true },
+
+    { group: 'Dominance (sdílená karta)', category: 'Dominované Ax', handA: 'AK', handB: 'AQ', pctA: 74, pctB: 26, approx: true },
+    { group: 'Dominance (sdílená karta)', category: 'Dominované Kx', handA: 'KQ', handB: 'KJ', pctA: 73, pctB: 27, approx: true },
+
+    { group: 'Dvě nepárové handy', category: 'Dvě různé nepárové handy', handA: 'AK', handB: 'QJ', pctA: 64, pctB: 36, approx: true },
+    { group: 'Dvě nepárové handy', category: 'Overcards vs suited connectory', handA: 'AK', handB: '87s', pctA: 58, pctB: 42, approx: true },
+
+    { group: 'Speciální případ', category: 'Stejná handa, jiné suity', handA: 'AKo', handB: 'AKo', pctA: 50, pctB: 50, featured: true },
+  ];
+
+  const groupsEl = document.getElementById('groups');
+  let lastGroup = null;
+
+  MATCHUPS.forEach(m => {
+    if (m.group !== lastGroup) {
+      const title = document.createElement('div');
+      title.className = 'group-title';
+      title.textContent = m.group;
+      groupsEl.appendChild(title);
+      lastGroup = m.group;
+    }
+
+    const row = document.createElement('div');
+    row.className = 'matchup-row' + (m.featured ? ' featured' : '');
+
+    const header = document.createElement('div');
+    header.className = 'matchup-header';
+    header.innerHTML =
+      `<span class="matchup-category">${m.category}</span>` +
+      `<span class="matchup-hands">` +
+        `<span class="hand-chip">${m.handA}</span>` +
+        `<span class="vs-sep">vs</span>` +
+        `<span class="hand-chip">${m.handB}</span>` +
+      `</span>`;
+    row.appendChild(header);
+
+    const bar = document.createElement('div');
+    bar.className = 'equity-bar';
+    const fill = document.createElement('div');
+    fill.className = 'equity-fill';
+    fill.style.width = m.pctA + '%';
+    bar.appendChild(fill);
+    row.appendChild(bar);
+
+    const labels = document.createElement('div');
+    labels.className = 'equity-labels';
+    const prefix = m.approx || m.rangeLabel ? '~' : '';
+    labels.innerHTML =
+      `<span class="favorite">${m.handA} · ${prefix}${m.pctA % 1 === 0 ? m.pctA : m.pctA.toFixed(1)}%</span>` +
+      `<span class="underdog">${prefix}${m.pctB % 1 === 0 ? m.pctB : m.pctB.toFixed(1)}% · ${m.handB}</span>`;
+    row.appendChild(labels);
+
+    if (m.rangeLabel) {
+      const note = document.createElement('div');
+      note.className = 'legend-note';
+      note.textContent = m.rangeLabel;
+      row.appendChild(note);
+    }
+
+    groupsEl.appendChild(row);
+  });
+
+  const THEME_KEY = 'pokerBlockersTheme';
+  const themeToggleBtn = document.getElementById('themeToggle');
+
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    themeToggleBtn.textContent = theme === 'dark' ? '☀️' : '🌙';
+    themeToggleBtn.setAttribute('aria-label', theme === 'dark' ? 'Přepnout na světlý režim' : 'Přepnout na tmavý režim');
+    try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
+  }
+
+  function preferredTheme() {
+    let saved = null;
+    try { saved = localStorage.getItem(THEME_KEY); } catch (e) {}
+    if (saved === 'light' || saved === 'dark') return saved;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  let currentTheme = preferredTheme();
+  applyTheme(currentTheme);
+
+  themeToggleBtn.addEventListener('click', () => {
+    currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    applyTheme(currentTheme);
+  });
+})();
+</script>
+</body>
+</html>

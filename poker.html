@@ -110,6 +110,34 @@
     cursor: pointer;
   }
 
+  .tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+
+  .tab {
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--muted);
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+  }
+
+  .tab:hover {
+    color: var(--ink);
+  }
+
+  .tab.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+
   .controls {
     display: flex;
     align-items: center;
@@ -490,6 +518,12 @@
     <h1>Poker Blockers</h1>
     <button id="themeToggle" class="theme-toggle" type="button" aria-label="Přepnout tmavý režim">🌙</button>
   </div>
+
+  <nav class="tabs">
+    <a href="poker.html" class="tab active">Blockers</a>
+    <a href="headsup-allin.html" class="tab">Heads-up All-in</a>
+    <a href="pot-odds.html" class="tab">Pot Odds</a>
+  </nav>
 
   <div class="controls">
     <div class="toggle">
@@ -955,11 +989,12 @@
     document.documentElement.setAttribute('data-theme', theme);
     themeToggleBtn.textContent = theme === 'dark' ? '☀️' : '🌙';
     themeToggleBtn.setAttribute('aria-label', theme === 'dark' ? 'Přepnout na světlý režim' : 'Přepnout na tmavý režim');
-    localStorage.setItem(THEME_KEY, theme);
+    try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
   }
 
   function preferredTheme() {
-    const saved = localStorage.getItem(THEME_KEY);
+    let saved = null;
+    try { saved = localStorage.getItem(THEME_KEY); } catch (e) {}
     if (saved === 'light' || saved === 'dark') return saved;
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
