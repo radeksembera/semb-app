@@ -36,6 +36,8 @@
     --cell-excluded-text: #9aa3af;
     --shadow: rgba(0,0,0,0.35);
     --shadow-modal: rgba(0,0,0,0.4);
+    --good: #16a34a;
+    --bad: #dc2626;
   }
 
   :root[data-theme="dark"] {
@@ -58,6 +60,8 @@
     --cell-excluded-text: #565c68;
     --shadow: rgba(0,0,0,0.6);
     --shadow-modal: rgba(0,0,0,0.6);
+    --good: #4ade80;
+    --bad: #f87171;
   }
 
   * { box-sizing: border-box; }
@@ -145,7 +149,10 @@
     line-height: 1.5;
   }
 
-  .group-title {
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-size: 12px;
     font-weight: 800;
     text-transform: uppercase;
@@ -154,21 +161,26 @@
     margin: 28px 0 12px;
   }
 
-  .group-title:first-of-type {
+  .section-title:first-of-type {
     margin-top: 0;
   }
 
+  .section-title .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .section-title.fav .dot { background: var(--good); }
+  .section-title.dog .dot { background: var(--bad); }
+
   .matchup-row {
-    margin-bottom: 18px;
+    margin-bottom: 12px;
     padding: 14px 16px;
     border-radius: 12px;
     background: var(--surface-soft);
     border: 1px solid var(--surface-soft-border);
-  }
-
-  .matchup-row.featured {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 1px var(--accent) inset;
   }
 
   .matchup-header {
@@ -218,10 +230,6 @@
     background: var(--cell-excluded-bg);
   }
 
-  .equity-fill {
-    background: linear-gradient(90deg, var(--accent), #7c6ff0);
-  }
-
   .equity-labels {
     display: flex;
     justify-content: space-between;
@@ -230,13 +238,9 @@
     margin-top: 6px;
   }
 
-  .equity-labels .favorite {
-    color: var(--accent);
-  }
-
-  .equity-labels .underdog {
-    color: var(--muted);
-  }
+  .equity-labels .lead.fav { color: var(--good); }
+  .equity-labels .lead.dog { color: var(--bad); }
+  .equity-labels .rest { color: var(--muted); }
 
   .legend-note {
     margin-top: 4px;
@@ -255,65 +259,68 @@
   <nav class="tabs">
     <a href="poker.html" class="tab">Blockers</a>
     <a href="headsup-allin.html" class="tab active">Heads-up All-in</a>
-    <a href="pot-odds.html" class="tab">Pot Odds</a>
   </nav>
 
-  <p class="subtitle">Přibližná equity preflop all-in v headsupu podle typu srážky. Delší, tmavší pruh = vyšší šance na výhru.</p>
+  <p class="subtitle">Přibližná equity preflop all-in v headsupu. Nejdřív pohled favorita (zelená, řazeno od nejjistější výhry), pak stejné srážky z pohledu slabší ruky (červená, řazeno od nejmenšího handicapu).</p>
 
-  <div id="groups"></div>
+  <div id="sections"></div>
 </div>
 
 <script>
 (function () {
   const MATCHUPS = [
-    { group: 'Pár vs pár', category: 'Vyšší pár vs nižší pár', handA: 'QQ', handB: '88', pctA: 81, pctB: 19 },
-    { group: 'Pár vs pár', category: 'Klasický cooler', handA: 'AA', handB: 'KK', pctA: 82, pctB: 18, featured: true },
-
-    { group: 'Pár vs overcards', category: 'Pár vs 2 overcards', handA: '88', handB: 'AK', pctA: 54, pctB: 46 },
-    { group: 'Pár vs overcards', category: 'Pár vs 1 overcard + 1 undercard', handA: 'QQ', handB: 'AJ', pctA: 70, pctB: 30, approx: true },
-    { group: 'Pár vs overcards', category: 'Pár vs suited connectory', handA: 'TT', handB: '87s', pctA: 53.5, pctB: 46.5, rangeLabel: '~52–55 : 45–48' },
-    { group: 'Pár vs overcards', category: 'Silný pár vs suited connectory', handA: 'AA', handB: '87s', pctA: 77, pctB: 23, approx: true },
-
-    { group: 'Dominance (sdílená karta)', category: 'Dominované Ax', handA: 'AK', handB: 'AQ', pctA: 74, pctB: 26, approx: true },
-    { group: 'Dominance (sdílená karta)', category: 'Dominované Kx', handA: 'KQ', handB: 'KJ', pctA: 73, pctB: 27, approx: true },
-
-    { group: 'Dvě nepárové handy', category: 'Dvě různé nepárové handy', handA: 'AK', handB: 'QJ', pctA: 64, pctB: 36, approx: true },
-    { group: 'Dvě nepárové handy', category: 'Overcards vs suited connectory', handA: 'AK', handB: '87s', pctA: 58, pctB: 42, approx: true },
-
-    { group: 'Speciální případ', category: 'Stejná handa, jiné suity', handA: 'AKo', handB: 'AKo', pctA: 50, pctB: 50, featured: true },
+    { category: 'Vyšší pár vs nižší pár', categoryFlip: 'Nižší pár vs vyšší pár', handA: 'QQ', handB: '88', pctA: 81, pctB: 19 },
+    { category: 'Klasický cooler', categoryFlip: 'Klasický cooler', handA: 'AA', handB: 'KK', pctA: 82, pctB: 18 },
+    { category: 'Pár vs 2 overcards', categoryFlip: '2 overcards vs pár', handA: '88', handB: 'AK', pctA: 54, pctB: 46 },
+    { category: 'Pár vs 1 overcard + 1 undercard', categoryFlip: '1 overcard + 1 undercard vs pár', handA: 'QQ', handB: 'AJ', pctA: 70, pctB: 30, approx: true },
+    { category: 'Pár vs suited connectory', categoryFlip: 'Suited connectory vs pár', handA: 'TT', handB: '87s', pctA: 53.5, pctB: 46.5, rangeLabel: '~52–55 : 45–48', rangeLabelFlip: '~45–48 : 52–55' },
+    { category: 'Silný pár vs suited connectory', categoryFlip: 'Suited connectory vs silný pár', handA: 'AA', handB: '87s', pctA: 77, pctB: 23, approx: true },
+    { category: 'Dominované Ax', categoryFlip: 'Dominované Ax', handA: 'AK', handB: 'AQ', pctA: 74, pctB: 26, approx: true },
+    { category: 'Dominované Kx', categoryFlip: 'Dominované Kx', handA: 'KQ', handB: 'KJ', pctA: 73, pctB: 27, approx: true },
+    { category: 'Dvě různé nepárové handy', categoryFlip: 'Dvě různé nepárové handy', handA: 'AK', handB: 'QJ', pctA: 64, pctB: 36, approx: true },
+    { category: 'Overcards vs suited connectory', categoryFlip: 'Suited connectory vs overcards', handA: 'AK', handB: '87s', pctA: 58, pctB: 42, approx: true },
   ];
 
-  const groupsEl = document.getElementById('groups');
-  let lastGroup = null;
+  function fmt(pct) {
+    return pct % 1 === 0 ? String(pct) : pct.toFixed(1);
+  }
 
-  MATCHUPS.forEach(m => {
-    if (m.group !== lastGroup) {
-      const title = document.createElement('div');
-      title.className = 'group-title';
-      title.textContent = m.group;
-      groupsEl.appendChild(title);
-      lastGroup = m.group;
-    }
+  // pct assumed >= 50 for green, <= 50 for red; distance from 50 drives intensity
+  function scaleColor(pct, kind) {
+    const t = Math.min(1, Math.max(0, Math.abs(pct - 50) / 50));
+    const light = 82 - t * 34;
+    const sat = 48 + t * 24;
+    const hue = kind === 'fav' ? 142 : 4;
+    return `hsl(${hue}, ${sat}%, ${light}%)`;
+  }
+
+  function buildRow(m, kind) {
+    const lead = kind === 'fav'
+      ? { hand: m.handA, pct: m.pctA, cat: m.category, note: m.rangeLabel }
+      : { hand: m.handB, pct: m.pctB, cat: m.categoryFlip, note: m.rangeLabelFlip };
+    const rest = kind === 'fav'
+      ? { hand: m.handB, pct: m.pctB }
+      : { hand: m.handA, pct: m.pctA };
 
     const row = document.createElement('div');
-    row.className = 'matchup-row' + (m.featured ? ' featured' : '');
+    row.className = 'matchup-row';
 
     const header = document.createElement('div');
     header.className = 'matchup-header';
     header.innerHTML =
-      `<span class="matchup-category">${m.category}</span>` +
+      `<span class="matchup-category">${lead.cat}</span>` +
       `<span class="matchup-hands">` +
-        `<span class="hand-chip">${m.handA}</span>` +
+        `<span class="hand-chip">${lead.hand}</span>` +
         `<span class="vs-sep">vs</span>` +
-        `<span class="hand-chip">${m.handB}</span>` +
+        `<span class="hand-chip">${rest.hand}</span>` +
       `</span>`;
     row.appendChild(header);
 
     const bar = document.createElement('div');
     bar.className = 'equity-bar';
     const fill = document.createElement('div');
-    fill.className = 'equity-fill';
-    fill.style.width = m.pctA + '%';
+    fill.style.width = lead.pct + '%';
+    fill.style.background = scaleColor(lead.pct, kind);
     bar.appendChild(fill);
     row.appendChild(bar);
 
@@ -321,19 +328,37 @@
     labels.className = 'equity-labels';
     const prefix = m.approx || m.rangeLabel ? '~' : '';
     labels.innerHTML =
-      `<span class="favorite">${m.handA} · ${prefix}${m.pctA % 1 === 0 ? m.pctA : m.pctA.toFixed(1)}%</span>` +
-      `<span class="underdog">${prefix}${m.pctB % 1 === 0 ? m.pctB : m.pctB.toFixed(1)}% · ${m.handB}</span>`;
+      `<span class="lead ${kind}">${lead.hand} · ${prefix}${fmt(lead.pct)}%</span>` +
+      `<span class="rest">${prefix}${fmt(rest.pct)}% · ${rest.hand}</span>`;
     row.appendChild(labels);
 
-    if (m.rangeLabel) {
+    if (lead.note) {
       const note = document.createElement('div');
       note.className = 'legend-note';
-      note.textContent = m.rangeLabel;
+      note.textContent = lead.note;
       row.appendChild(note);
     }
 
-    groupsEl.appendChild(row);
-  });
+    return row;
+  }
+
+  const sectionsEl = document.getElementById('sections');
+
+  const favTitle = document.createElement('div');
+  favTitle.className = 'section-title fav';
+  favTitle.innerHTML = '<span class="dot"></span>Favorit (od nejjistější výhry)';
+  sectionsEl.appendChild(favTitle);
+
+  [...MATCHUPS].sort((a, b) => b.pctA - a.pctA)
+    .forEach(m => sectionsEl.appendChild(buildRow(m, 'fav')));
+
+  const dogTitle = document.createElement('div');
+  dogTitle.className = 'section-title dog';
+  dogTitle.innerHTML = '<span class="dot"></span>Outsider (od nejmenšího handicapu)';
+  sectionsEl.appendChild(dogTitle);
+
+  [...MATCHUPS].sort((a, b) => b.pctB - a.pctB)
+    .forEach(m => sectionsEl.appendChild(buildRow(m, 'dog')));
 
   const THEME_KEY = 'pokerBlockersTheme';
   const themeToggleBtn = document.getElementById('themeToggle');
