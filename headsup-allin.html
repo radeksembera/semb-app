@@ -186,16 +186,9 @@
   .matchup-header {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
-    flex-wrap: wrap;
-    gap: 6px;
+    align-items: center;
+    gap: 10px;
     margin-bottom: 10px;
-  }
-
-  .matchup-category {
-    font-size: 13px;
-    color: var(--muted);
-    font-weight: 600;
   }
 
   .matchup-hands {
@@ -222,6 +215,14 @@
     font-weight: 600;
   }
 
+  .matchup-pct {
+    font-size: 16px;
+    font-weight: 800;
+  }
+
+  .matchup-pct.fav { color: var(--good); }
+  .matchup-pct.dog { color: var(--bad); }
+
   .equity-bar {
     display: flex;
     height: 16px;
@@ -229,31 +230,13 @@
     overflow: hidden;
     background: var(--cell-excluded-bg);
   }
-
-  .equity-labels {
-    display: flex;
-    justify-content: space-between;
-    font-size: 13px;
-    font-weight: 800;
-    margin-top: 6px;
-  }
-
-  .equity-labels .lead.fav { color: var(--good); }
-  .equity-labels .lead.dog { color: var(--bad); }
-  .equity-labels .rest { color: var(--muted); }
-
-  .legend-note {
-    margin-top: 4px;
-    font-size: 11px;
-    color: var(--muted);
-  }
 </style>
 </head>
 <body>
 <div class="app">
   <div class="header-row">
     <h1>Heads-up All-in</h1>
-    <button id="themeToggle" class="theme-toggle" type="button" aria-label="Přepnout tmavý režim">🌙</button>
+    <button id="themeToggle" class="theme-toggle" type="button" aria-label="Přepnout tmavý режim">🌙</button>
   </div>
 
   <nav class="tabs">
@@ -269,21 +252,28 @@
 <script>
 (function () {
   const MATCHUPS = [
-    { category: 'Vyšší pár vs nižší pár', categoryFlip: 'Nižší pár vs vyšší pár', handA: 'QQ', handB: '88', pctA: 81, pctB: 19 },
-    { category: 'Klasický cooler', categoryFlip: 'Klasický cooler', handA: 'AA', handB: 'KK', pctA: 82, pctB: 18 },
-    { category: 'Pár vs 2 overcards', categoryFlip: '2 overcards vs pár', handA: '88', handB: 'AK', pctA: 54, pctB: 46 },
-    { category: 'Pár vs 1 overcard + 1 undercard', categoryFlip: '1 overcard + 1 undercard vs pár', handA: 'QQ', handB: 'AJ', pctA: 70, pctB: 30, approx: true },
-    { category: 'Pár vs suited connectory', categoryFlip: 'Suited connectory vs pár', handA: 'TT', handB: '87s', pctA: 53.5, pctB: 46.5, rangeLabel: '~52–55 : 45–48', rangeLabelFlip: '~45–48 : 52–55' },
-    { category: 'Silný pár vs suited connectory', categoryFlip: 'Suited connectory vs silný pár', handA: 'AA', handB: '87s', pctA: 77, pctB: 23, approx: true },
-    { category: 'Dominované Ax', categoryFlip: 'Dominované Ax', handA: 'AK', handB: 'AQ', pctA: 74, pctB: 26, approx: true },
-    { category: 'Dominované Kx', categoryFlip: 'Dominované Kx', handA: 'KQ', handB: 'KJ', pctA: 73, pctB: 27, approx: true },
-    { category: 'Dvě různé nepárové handy', categoryFlip: 'Dvě různé nepárové handy', handA: 'AK', handB: 'QJ', pctA: 64, pctB: 36, approx: true },
-    { category: 'Overcards vs suited connectory', categoryFlip: 'Suited connectory vs overcards', handA: 'AK', handB: '87s', pctA: 58, pctB: 42, approx: true },
+    { handA: 'AA', handB: 'KK', pctA: 82, pctB: 18 },
+    { handA: 'QQ', handB: '88', pctA: 81, pctB: 19 },
+    { handA: 'KK', handB: '87s', pctA: 77, pctB: 23 },
+    { handA: 'AK', handB: 'AQ', rangeA: [70, 75], rangeB: [25, 30] },
+    { handA: 'QQ', handB: 'AJ', pctA: 67, pctB: 33 },
+    { handA: 'AK', handB: 'QJ', pctA: 63, pctB: 37 },
+    { handA: '88', handB: 'AK', pctA: 53, pctB: 47 },
   ];
 
-  function fmt(pct) {
-    return pct % 1 === 0 ? String(pct) : pct.toFixed(1);
-  }
+  // normalize: every matchup gets a numeric pctA/pctB (midpoint for ranges) for
+  // sorting and bar width, plus a display label (range or plain number).
+  MATCHUPS.forEach(m => {
+    if (m.rangeA) {
+      m.pctA = (m.rangeA[0] + m.rangeA[1]) / 2;
+      m.pctB = (m.rangeB[0] + m.rangeB[1]) / 2;
+      m.labelA = `${m.rangeA[0]}–${m.rangeA[1]}%`;
+      m.labelB = `${m.rangeB[0]}–${m.rangeB[1]}%`;
+    } else {
+      m.labelA = `${m.pctA}%`;
+      m.labelB = `${m.pctB}%`;
+    }
+  });
 
   // pct assumed >= 50 for green, <= 50 for red; distance from 50 drives intensity
   function scaleColor(pct, kind) {
@@ -296,11 +286,9 @@
 
   function buildRow(m, kind) {
     const lead = kind === 'fav'
-      ? { hand: m.handA, pct: m.pctA, cat: m.category, note: m.rangeLabel }
-      : { hand: m.handB, pct: m.pctB, cat: m.categoryFlip, note: m.rangeLabelFlip };
-    const rest = kind === 'fav'
-      ? { hand: m.handB, pct: m.pctB }
-      : { hand: m.handA, pct: m.pctA };
+      ? { hand: m.handA, pct: m.pctA, label: m.labelA }
+      : { hand: m.handB, pct: m.pctB, label: m.labelB };
+    const rest = kind === 'fav' ? m.handB : m.handA;
 
     const row = document.createElement('div');
     row.className = 'matchup-row';
@@ -308,12 +296,12 @@
     const header = document.createElement('div');
     header.className = 'matchup-header';
     header.innerHTML =
-      `<span class="matchup-category">${lead.cat}</span>` +
       `<span class="matchup-hands">` +
         `<span class="hand-chip">${lead.hand}</span>` +
         `<span class="vs-sep">vs</span>` +
-        `<span class="hand-chip">${rest.hand}</span>` +
-      `</span>`;
+        `<span class="hand-chip">${rest}</span>` +
+      `</span>` +
+      `<span class="matchup-pct ${kind}">${lead.label}</span>`;
     row.appendChild(header);
 
     const bar = document.createElement('div');
@@ -323,21 +311,6 @@
     fill.style.background = scaleColor(lead.pct, kind);
     bar.appendChild(fill);
     row.appendChild(bar);
-
-    const labels = document.createElement('div');
-    labels.className = 'equity-labels';
-    const prefix = m.approx || m.rangeLabel ? '~' : '';
-    labels.innerHTML =
-      `<span class="lead ${kind}">${lead.hand} · ${prefix}${fmt(lead.pct)}%</span>` +
-      `<span class="rest">${prefix}${fmt(rest.pct)}% · ${rest.hand}</span>`;
-    row.appendChild(labels);
-
-    if (lead.note) {
-      const note = document.createElement('div');
-      note.className = 'legend-note';
-      note.textContent = lead.note;
-      row.appendChild(note);
-    }
 
     return row;
   }
